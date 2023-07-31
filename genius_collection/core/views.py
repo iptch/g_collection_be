@@ -1,9 +1,10 @@
 from django.contrib.auth.models import User, Group
 from rest_framework import viewsets
 from rest_framework import permissions
-from genius_collection.core.serializers import UserSerializer, GroupSerializer
+from genius_collection.core.serializers import UserSerializer, GroupSerializer, CardSerializer
 from django.http import HttpResponse
 
+from .models import Card
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -21,6 +22,15 @@ class GroupViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+
+class CardViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows cards to be viewed or edited.
+    """
+    queryset = Card.objects.all()
+    serializer_class = CardSerializer
+    # permission_classes = [permissions.IsAuthenticated]
 
 
 def details(request):
