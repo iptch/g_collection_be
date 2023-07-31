@@ -35,6 +35,9 @@ jobs:
       - name: Run migrations
         run: python manage.py migrate
 
+      - name: Collect static files
+        run: python manage.py collectstatic
+
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v2
         with:
