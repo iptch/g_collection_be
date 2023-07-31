@@ -11,6 +11,7 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'genius_collection.settings')
+settings_module = 'azureproject.production' if 'WEBSITE_HOSTNAME' in os.environ else 'genius_collection.settings'
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', settings_module)
 
 application = get_wsgi_application()
