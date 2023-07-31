@@ -3,8 +3,10 @@ from rest_framework import viewsets
 from rest_framework import permissions
 from genius_collection.core.serializers import UserSerializer, GroupSerializer, CardSerializer
 from django.http import HttpResponse
+from django.shortcuts import render
 
-from .models import Card
+from .models import Card, Question
+
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -37,3 +39,9 @@ class CardViewSet(viewsets.ModelViewSet):
 def details(request):
     print('You reached the details')
     return HttpResponse('Successful Detail')
+
+
+def questions(request):
+    latest_question_list = Question.objects.order_by("-pub_date")[:5]
+    context = {"latest_question_list": latest_question_list}
+    return render(request, "core/index.html", context)
