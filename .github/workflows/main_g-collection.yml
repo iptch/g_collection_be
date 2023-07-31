@@ -36,7 +36,7 @@ jobs:
         run: python manage.py migrate
 
       - name: Collect static files
-        run: python manage.py collectstatic
+        run: python manage.py collectstatic --no-input
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v2
