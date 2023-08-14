@@ -122,7 +122,9 @@ REST_FRAMEWORK = {
 }
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-CORS_ALLOWED_ORIGINS = [
-    "https://g-collection.azurewebsites.net",
-    "http://localhost:4200",
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "https://g-collection.azurewebsites.net",
+#     "http://localhost:4200",
+# ]
+
+CORS_ALLOW_ALL_ORIGINS = True
