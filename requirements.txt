@@ -5,3 +5,7 @@ whitenoise==6.5.0
 djangorestframework==3.14.0
 python-dotenv==1.0.0
 django-cors-headers==4.2.0
+pytest~=7.4.0
+cryptography~=41.0.3
+requests~=2.31.0
+PyJWT~=2.8.0

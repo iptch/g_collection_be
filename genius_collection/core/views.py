@@ -6,6 +6,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 from .models import Card, Question
+from .jwt_validation import JWTAccessTokenAuthentication
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -30,6 +31,8 @@ class CardViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows cards to be viewed or edited.
     """
+    authentication_classes = [JWTAccessTokenAuthentication]
+
     queryset = Card.objects.all()
     serializer_class = CardSerializer
 
