@@ -1,4 +1,13 @@
 # Genius Collection 2.0 - Backend
+Endpoint: https://g-collection.scm.azurewebsites.net/ 
+
+## Overview
+This backend works with Django and Django Rest Framework. Data is stored in SQLite (local) or Postgres (remote) Database. The application is hosted on Azure. The authentication works via Azure OAuth which federates the requests to Google Cloud.
+
+First time working with some of the tools mentioned above? Have a look at these links:
+* [Django Quickstart](https://www.django-rest-framework.org/tutorial/quickstart/)
+* [Django REST Framework Quickstart](https://www.django-rest-framework.org/#quickstart)
+
 ## Local Setup
 ### Prerequisites
 Required:
@@ -36,6 +45,8 @@ curl --request GET 'http://127.0.0.1:8000/cards/' \
 Deployment Pipeline via GitHub Actions 
 Definition in `.github/workflows/main_g-collection.yml`
 Automatic Deployment when changes on main
+Based on this [tutorial](https://learn.microsoft.com/en-us/azure/app-service/tutorial-python-postgresql-app?tabs=flask%2Cwindows&pivots=deploy-portal)
+
 
 ## Azure Setup
 * Subscription: iptch Sandbox
@@ -91,6 +102,3 @@ c1 = Card(name = 'Stefan Hüsemann', acronym = 'SHU', team = 'Partner', job = 'L
 c1.save()
 u1.cards.add(c1)
 ```
-
-## Learning Material
-### Django
