@@ -1,5 +1,13 @@
 # Genius Collection 2.0 - Backend
 ## Local Setup
+### Prerequisites
+Required:
+[Python >= 3.10](https://www.python.org/downloads/)
+
+Recommended:
+DB Viewer, e.g. [DBeaver](https://dbeaver.io/)
+
+### Run configuration
 Install requirements
 `pip install -r requirements.txt`
 
@@ -42,6 +50,13 @@ Automatic Deployment when changes on main
   * Add this scope to FE Application in "app.module.ts" > "protectedRessourceMap" 
 * Frontend Registration is needed to initiate OAUTH Flow and obtaining the JWT Token
 
+### Remote Debugging
+* In Azure Portal, navigate to the "App Service" > "SSH"
+* execute `python manage.py shell`
+* This opens a Python Shell in the configured Djange setup where you can execute commands
+  * e.g. `os.environ['DJANGO_SETTINGS_MODULE']`
+
+
 ## DB configuration
 ### resetting to empty state
 #### local
@@ -61,6 +76,8 @@ Automatic Deployment when changes on main
 * Username: gcollectionadmin
 * Password: ask friend :-)
 
+FYI: The App Service connects via "Service Connector" to the Postgres Instance.
+
 ### create some dummy entries
 `python manage.py shell`
 ```
@@ -74,3 +91,6 @@ c1 = Card(name = 'Stefan Hüsemann', acronym = 'SHU', team = 'Partner', job = 'L
 c1.save()
 u1.cards.add(c1)
 ```
+
+## Learning Material
+### Django
