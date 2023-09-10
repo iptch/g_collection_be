@@ -127,3 +127,8 @@ CORS_ALLOWED_ORIGINS = [
     'https://lemon-moss-0be637110.3.azurestaticapps.net'
 ]
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}

@@ -1,4 +1,5 @@
 import datetime
+from django.core.cache import cache
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import (
     BlobServiceClient,
@@ -11,17 +12,29 @@ from azure.storage.blob import (
 # Microsoft recommends the use of Azure AD credentials as a security best practice,
 # rather than using the account key, which can be more easily compromised.
 def request_user_delegation_key(blob_service_client: BlobServiceClient) -> UserDelegationKey:
-    # Get a user delegation key that's valid for 1 day
-    delegation_key_start_time = datetime.datetime.now(datetime.timezone.utc)
-    delegation_key_expiry_time = delegation_key_start_time + datetime.timedelta(days=1)
+    cache_key = "user_delegation_key"
+    cached_key = cache.get(cache_key)
 
-    return blob_service_client.get_user_delegation_key(
-        key_start_time=delegation_key_start_time,
+    if cached_key:
+        return cached_key
+
+    # If the key isn't in cache, fetch a new one.
+    current_time = datetime.datetime.now(datetime.timezone.utc)
+    delegation_key_expiry_time = current_time + datetime.timedelta(days=1)
+
+    user_delegation_key = blob_service_client.get_user_delegation_key(
+        key_start_time=current_time,
         key_expiry_time=delegation_key_expiry_time
     )
 
+    # Cache the key for 23 hours (1 hour less than its validity).
+    cache_duration = delegation_key_expiry_time - current_time - datetime.timedelta(hours=1)
+    cache.set(cache_key, user_delegation_key, cache_duration.seconds)
+
+    return user_delegation_key
+
 def create_user_delegation_blob_sas(blob_client: BlobClient, user_delegation_key: UserDelegationKey) -> str:
-        # Create a SAS token that's valid for 1 hour
+        # Create a SAS token that's valid for 1 hour.
         start_time = datetime.datetime.now(datetime.timezone.utc)
         expiry_time = start_time + datetime.timedelta(hours=1)
 
