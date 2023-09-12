@@ -11,17 +11,15 @@ First time working with some of the tools mentioned above? Have a look at these 
 ## Local Setup
 ### Prerequisites
 Required:
-[Python >= 3.10](https://www.python.org/downloads/)
+[Python >= 3.10](https://www.python.org/downloads/), [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
 
 Recommended:
 DB Viewer, e.g. [DBeaver](https://dbeaver.io/)
 
 ### Run configuration
-Install requirements
-`pip install -r requirements.txt`
-
-Run local server
-`python manage.py runserver`
+* Install requirements `pip install -r requirements.txt`
+* Login with Azure CLI using your ipt address (to access blob storage) `az login`
+* Run local server `python manage.py runserver`
 
 ## Authentication
 All Calls need a JWT Token. Get one via Curl or Postman. It is valid for 1 hour.
