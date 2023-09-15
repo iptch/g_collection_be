@@ -17,6 +17,7 @@ Recommended:
 DB Viewer, e.g. [DBeaver](https://dbeaver.io/)
 
 ### Run configuration
+Either use the devcontainer in `.devcontainer` with VS Code or execute the following steps:
 * Install requirements `pip install -r requirements.txt`
 * Login with Azure CLI using your ipt address (to access blob storage) `az login`
 * Run local server `python manage.py runserver`
