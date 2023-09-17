@@ -8,6 +8,18 @@ First time working with some of the tools mentioned above? Have a look at these 
 * [Django Quickstart](https://www.django-rest-framework.org/tutorial/quickstart/)
 * [Django REST Framework Quickstart](https://www.django-rest-framework.org/#quickstart)
 
+## Running the app in a Dev Container
+
+1. Install and run [Docker](https://www.docker.com/products/docker-desktop/).
+2. Open this project in [VS Code](https://code.visualstudio.com/).
+3. Install the VS Code extension _Dev Containers_ (`Cmd+Shift+X` or `Ctrl+Shift+X`).
+4. Run _Dev Containers: Rebuild Container_ (`Cmd+Shift+P` or `Ctrl+Shift+P`).
+5. Run `export SECRET_KEY=...` to set the Azure secret key as environment variable.
+6. Run `az login` to log into Azure using your ipt address (to access blob storage).
+7. Run `python manage.py makemigrations` to prepare the local DB.
+8. Run `python manage.py runserver` to start up the app.
+9. Code away!
+
 ## Local Setup
 ### Prerequisites
 Required:
@@ -17,7 +29,7 @@ Recommended:
 DB Viewer, e.g. [DBeaver](https://dbeaver.io/)
 
 ### Run configuration
-Either use the devcontainer in `.devcontainer` with VS Code or execute the following steps:
+Either use the devcontainer in `.devcontainer` with VS Code (described above) or execute the following steps:
 * Install requirements `pip install -r requirements.txt`
 * Login with Azure CLI using your ipt address (to access blob storage) `az login`
 * Run local server `python manage.py runserver`
