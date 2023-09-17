@@ -88,16 +88,14 @@ Based on this [tutorial](https://learn.microsoft.com/en-us/azure/app-service/tut
 
 FYI: The App Service connects via "Service Connector" to the Postgres Instance.
 
-### create some dummy entries
-`python manage.py shell`
-```
-from genius_collection.core.models import User, Card
-u1 = User(name="Kevin", email="kevin.duss@ipt.ch")
-u1.save()
-u2 = User(name="Chris", email="christoph.weber@ipt.ch")
-u2.save()
+### Creating Dummy Entries
+There is a helper script in `genius_collection/core/management/commands/create_dummy_data.py` that creates some
+* Users
+* Cards
+* Gives the users some cards
 
-c1 = Card(name = 'Stefan Hüsemann', acronym = 'SHU', team = 'Partner', job = 'Lehrer', superpower = 'Besser mit dem Schläger', highlight = 'Andreas Offermann', must_have = 'Robit', image_link='shu.jpg')
-c1.save()
-u1.cards.add(c1)
-```
+You can execute it with:
+`python manage.py create_dummy_data`
+
+If you want to get a clean database (without deleting the tables), execute:
+`python manage.py flush`

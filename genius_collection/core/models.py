@@ -32,7 +32,26 @@ class Otp(models.Model):
     valid_to = models.DateTimeField()
 
 
+class OwnershipManager(models.Manager):
+    def add_card_to_user(self, user, card):
+        # Check if the user already owns the card
+        ownership, created = self.get_or_create(user=user, card=card)
+
+        # If the ownership already exists, increase the quantity by 1
+        if not created:
+            ownership.quantity += 1
+            ownership.save()
+
+        return ownership
+
+
 class Ownership(models.Model):
     user = models.ForeignKey(User, on_delete=models.RESTRICT)
     card = models.ForeignKey(Card, on_delete=models.RESTRICT)
     otp = models.ForeignKey(Otp, on_delete=models.RESTRICT, blank=True, null=True)
+    quantity = models.PositiveIntegerField(default=1)
+
+    objects = OwnershipManager()
+
+    def __str__(self):
+        return f'{self.user.__str__()} owns {self.quantity} of {self.card.__str__()}'
