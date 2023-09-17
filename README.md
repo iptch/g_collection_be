@@ -92,6 +92,12 @@ Based on this [tutorial](https://learn.microsoft.com/en-us/azure/app-service/tut
 * `python manage.py migrate`
 
 ### Postgres Connection
+Ensure the Firewall allows connection from your IP:
+
+Ressource Group: *rg-genius-collection* > Database: *g-collection-postgres* > Settings > Networking
+
+Then connect via a DB Viewer:
+
 * Host: g-collection-postgres.postgres.database.azure.com
 * Port: 5432
 * Database: g-collection-db
