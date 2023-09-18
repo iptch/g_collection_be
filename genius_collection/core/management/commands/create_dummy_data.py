@@ -47,7 +47,7 @@ class Command(BaseCommand):
             Card(name='Yves Brise', team='Partnerschaft', acronym='YBR', job='Tierarzt',
                  superpower='Vorbilder kopieren', highlight='Gestaltungsfreiraum',
                  must_have='Chillis', image_link='ybr.jpg'),
-            Card(name='Stefan Hüsemann', team='Partnerschaft', acronym='YBR', job='Müllmann (orange!) später Gärtner',
+            Card(name='Stefan Hüsemann', team='Partnerschaft', acronym='SHU', job='Müllmann (orange!) später Gärtner',
                  superpower='Ski in allen Lagen', highlight='Tolle Kollegen, hohe Innovationskraft',
                  must_have='Schnee', image_link='shu.jpg'),
         ]
