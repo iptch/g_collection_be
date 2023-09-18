@@ -16,7 +16,7 @@ First time working with some of the tools mentioned above? Have a look at these 
 4. Run _Dev Containers: Rebuild Container_ (`Cmd+Shift+P` or `Ctrl+Shift+P`).
 5. Run `export SECRET_KEY=...` to set the Azure secret key as environment variable.
 6. Run `az login` to log into Azure using your ipt address (to access blob storage).
-7. Run `python manage.py makemigrations` to prepare the local DB.
+7. Run `python manage.py migrate` to prepare the local DB.
 8. Run `python manage.py runserver` to start up the app.
 9. Code away!
 
