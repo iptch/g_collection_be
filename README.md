@@ -15,10 +15,11 @@ First time working with some of the tools mentioned above? Have a look at these 
 3. Install the VS Code extension _Dev Containers_ (`Cmd+Shift+X` or `Ctrl+Shift+X`).
 4. Run _Dev Containers: Rebuild Container_ (`Cmd+Shift+P` or `Ctrl+Shift+P`).
 5. Run `export SECRET_KEY=...` to set the Azure secret key as environment variable.
-6. Run `az login` to log into Azure using your ipt address (to access blob storage).
-7. Run `python manage.py migrate` to prepare the local DB.
-8. Run `python manage.py runserver` to start up the app.
-9. Code away!
+6. Add yourself to the Azure Subscription _iptch Sandbox_ (find instructions [here](https://app.happeo.com/pages/1e1oopl952ukqf9e0h/AzureampDu/1e5g766dso0ms8i9mp#wie-darf-ich-subscription-iptch-sandbox-nutzen)).
+7. Run `az login` to log into Azure using your ipt address (to access blob storage). If it doesn't work, try `az login --tenant iptzug.onmicrosoft.com`.
+8. Run `python manage.py migrate` to prepare the local DB.
+9. Run `python manage.py runserver` to start up the app.
+10. Code away!
 
 ## Local Setup
 ### Prerequisites
