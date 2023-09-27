@@ -15,10 +15,11 @@ First time working with some of the tools mentioned above? Have a look at these 
 3. Install the VS Code extension _Dev Containers_ (`Cmd+Shift+X` or `Ctrl+Shift+X`).
 4. Run _Dev Containers: Rebuild Container_ (`Cmd+Shift+P` or `Ctrl+Shift+P`).
 5. Run `export SECRET_KEY=...` to set the Azure secret key as environment variable.
-6. Run `az login` to log into Azure using your ipt address (to access blob storage).
-7. Run `python manage.py makemigrations` to prepare the local DB.
-8. Run `python manage.py runserver` to start up the app.
-9. Code away!
+6. Add yourself to the Azure Subscription _iptch Sandbox_ (find instructions [here](https://app.happeo.com/pages/1e1oopl952ukqf9e0h/AzureampDu/1e5g766dso0ms8i9mp#wie-darf-ich-subscription-iptch-sandbox-nutzen)).
+7. Run `az login` to log into Azure using your ipt address (to access blob storage). If it doesn't work, try `az login --tenant iptzug.onmicrosoft.com`.
+8. Run `python manage.py migrate` to prepare the local DB.
+9. Run `python manage.py runserver` to start up the app.
+10. Code away!
 
 ## Local Setup
 ### Prerequisites
@@ -92,6 +93,12 @@ Based on this [tutorial](https://learn.microsoft.com/en-us/azure/app-service/tut
 * `python manage.py migrate`
 
 ### Postgres Connection
+Ensure the Firewall allows connection from your IP:
+
+Ressource Group: *rg-genius-collection* > Database: *g-collection-postgres* > Settings > Networking
+
+Then connect via a DB Viewer:
+
 * Host: g-collection-postgres.postgres.database.azure.com
 * Port: 5432
 * Database: g-collection-db
@@ -100,16 +107,16 @@ Based on this [tutorial](https://learn.microsoft.com/en-us/azure/app-service/tut
 
 FYI: The App Service connects via "Service Connector" to the Postgres Instance.
 
-### create some dummy entries
-`python manage.py shell`
-```
-from genius_collection.core.models import User, Card
-u1 = User(name="Kevin", email="kevin.duss@ipt.ch")
-u1.save()
-u2 = User(name="Chris", email="christoph.weber@ipt.ch")
-u2.save()
+### Creating Dummy Entries
+There is a helper script in `genius_collection/core/management/commands/create_dummy_data.py` that creates some
+* Users
+* Cards
+* Gives the users some cards
 
-c1 = Card(name = 'Stefan Hüsemann', acronym = 'SHU', team = 'Partner', job = 'Lehrer', superpower = 'Besser mit dem Schläger', highlight = 'Andreas Offermann', must_have = 'Robit', image_link='shu.jpg')
-c1.save()
-u1.cards.add(c1)
-```
+For privacy reasons, this files is not versioned by git (this repo is public). Please download it from GDrive [here](https://drive.google.com/file/d/1z2skId5GmNs4oqamrTOKokGPYvYUaDms/view?usp=drive_link)
+
+You can then execute it with:
+`python manage.py create_dummy_data`
+
+If you want to get a clean database (without deleting the tables), execute:
+`python manage.py flush`

@@ -162,3 +162,5 @@ cython_debug/
 .idea
 staticfiles
 .env_postgres
+
+/genius_collection/core/management/commands/create_dummy_data.py
