@@ -27,6 +27,12 @@ class CardViewSet(viewsets.ModelViewSet):
     queryset = Card.objects.all()
     serializer_class = CardSerializer
 
+    def list(self, request):
+       # Pass the request to the serializer context
+        serializer = CardSerializer(context={'request': request}, many=True) 
+        data = serializer.to_representation(self.queryset)
+        return Response(data)
+
     @action(detail=False, methods=['post'], url_path='transfer')
     def transfer(self, request: HttpRequest):
         

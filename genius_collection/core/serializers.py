@@ -28,7 +28,7 @@ class CardSerializer(serializers.HyperlinkedModelSerializer):
         return get_blob_sas_url(obj.image_link)
 
     def get_quantity(self, obj):
-        result = Ownership.objects.filter(card=obj, user=USER_ID).first()
+        result = Ownership.objects.filter(card=obj, user=self.context["request"].user).first()
 
         if result is None:
             return 0
