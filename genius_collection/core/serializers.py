@@ -3,6 +3,7 @@ from rest_framework import serializers
 from .models import Card, User, Ownership
 from genius_collection.core.blob_sas import get_blob_sas_url
 
+USER_ID = 10
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
@@ -27,6 +28,10 @@ class CardSerializer(serializers.HyperlinkedModelSerializer):
         return get_blob_sas_url(obj.image_link)
 
     def get_quantity(self, obj):
-        quantities  = [result.quantity for result in Ownership.objects.filter(card=obj).all()]
-        return quantities
+        result = Ownership.objects.filter(card=obj, user=USER_ID).first()
 
+        if result is None:
+            return 0
+ 
+        else:
+            return result.quantity
