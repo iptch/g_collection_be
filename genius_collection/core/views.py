@@ -36,8 +36,10 @@ class CardViewSet(viewsets.ModelViewSet):
         try:
             ownership: Ownership = Ownership.objects.get(user=giver, card=card)
         except Ownership.DoesNotExist:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data=f"Oh Brate, Ownership does not exist!, {request.headers.items}")
-        
+            return Response(status=status.HTTP_400_BAD_REQUEST, data=f"Oh Brate, Ownership does not exist!")
+
+        if ownership.otp != request.data["otp"]:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={"status": f"Your otp does not match the one in the Database innit."})
         
         OwnershipHelper.transfer_ownership(request.user, ownership, card)
         
