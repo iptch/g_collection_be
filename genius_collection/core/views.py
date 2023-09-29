@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 from genius_collection.core.serializers import UserSerializer, CardSerializer
 
-from .models import Card, User
+from .models import Card, User, Ownership
 from .jwt_validation import JWTAccessTokenAuthentication
 
 
