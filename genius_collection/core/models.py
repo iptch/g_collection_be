@@ -53,8 +53,6 @@ class OwnershipManager(models.Manager):
         card_indices = random.choices(range(num_cards), k=num_samples)
         
         for idx in card_indices:
-            print(f"Assign {cards[idx]} to card collector {user}")
-            print(user, cards[idx])
             self.add_card_to_user(user=user, card=Card.objects.all()[idx])
 
 
