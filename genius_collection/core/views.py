@@ -27,9 +27,15 @@ class CardViewSet(viewsets.ModelViewSet):
     queryset = Card.objects.all()
     serializer_class = CardSerializer
 
+    def list(self, request):
+        # Pass the request to the serializer context
+        serializer = CardSerializer(context={'request': request}, many=True)
+        data = serializer.to_representation(self.queryset)
+        return Response(data)
+
     @action(detail=False, methods=['post'], url_path='transfer')
     def transfer(self, request: HttpRequest):
-        
+
         giver: User = User.objects.get(email=request.data["giver"])
         card: Card = Card.objects.get(id=request.data["id"])
 
@@ -39,9 +45,9 @@ class CardViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_400_BAD_REQUEST, data=f"Oh Brate, Ownership does not exist!")
 
         if ownership.otp != request.data["otp"]:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"status": f"Your otp does not match the one in the Database innit."})
-        
-        OwnershipHelper.transfer_ownership(request.user, ownership, card)
-        
-        return Response({"status": f"Card transfered successfully, Brate, now {ownership}"})
+            return Response(status=status.HTTP_400_BAD_REQUEST,
+                            data={"status": f"Your otp does not match the one in the Database innit."})
 
+        OwnershipHelper.transfer_ownership(request.user, ownership, card)
+
+        return Response({"status": f"Card transfered successfully, Brate, now {ownership}"})
