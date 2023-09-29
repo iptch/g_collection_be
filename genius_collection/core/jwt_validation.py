@@ -101,13 +101,3 @@ class JWTAccessTokenAuthentication(authentication.BaseAuthentication):
             if jwk.get('kid') == kid:
                 return jwk
         raise InvalidAuthorizationToken('kid not recognized')
-
-    @staticmethod
-    def get_name(token):
-        print(token)
-        return token.data.name
-    
-    @staticmethod
-    def get_unique_name(token):
-        print(token)
-        return token.data.unique_name
