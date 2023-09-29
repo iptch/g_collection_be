@@ -13,6 +13,7 @@ class Card(models.Model):
     highlight = models.CharField(max_length=200)
     must_have = models.CharField(max_length=200)
     image_link = models.CharField(max_length=200)
+    owned = models.PositiveIntegerField(default=0)
 
 
 class User(models.Model):

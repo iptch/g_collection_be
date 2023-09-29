@@ -15,7 +15,7 @@ class CardSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Card
-        fields = ['id', 'name', 'acronym', 'team', 'job', 'superpower', 'highlight', 'must_have', 'image_url']
+        fields = ['id', 'name', 'acronym', 'team', 'job', 'superpower', 'highlight', 'must_have', 'image_url', 'owned']
     
     def get_image_url(self, obj):
         return get_blob_sas_url(obj.image_link)
