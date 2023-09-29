@@ -119,4 +119,3 @@ You can then execute it with:
 `python manage.py create_dummy_data`
 
 If you want to get a clean database (without deleting the tables), execute:
-`python manage.py flush`
