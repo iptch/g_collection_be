@@ -1,3 +1,4 @@
+import random
 from django.db import models
 
 
@@ -55,3 +56,11 @@ class Ownership(models.Model):
 
     def __str__(self):
         return f'{self.user.__str__()} owns {self.quantity} of {self.card.__str__()}'
+
+    def assign_ownership(self, user, num_samples, num_duplicates=0):
+        num_cards = Card.objects.count()
+        if num_cards == 0:
+            return
+        card_indices = random.choices(range(num_cards), num_samples)
+        for idx in card_indices:
+            self.objects.add_card_to_user(user=user, card=self.test_cards[idx])
