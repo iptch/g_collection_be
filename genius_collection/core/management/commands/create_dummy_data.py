@@ -17,7 +17,7 @@ class Command(BaseCommand):
                       User(name='Luka Jovanovic', email='luka.jovanic@ipt.ch'),
                       User(name='Manuel Kuchelmeister', email='manuel.kuchelmeister@ipt.ch'),
                       User(name='Manuel Szecsenyi', email='manuel.szecseny@ipt.ch'),
-                      User(name='Mathias Dedial', email='mathias.dedial@ipt.ch'),
+                      User(name='Mathis Dedial', email='mathis.dedial@ipt.ch'),
                       User(name='Monika Spisak', email='monika.spisak@ipt.ch'),
                       User(name='Nicolas Mesot', email='nicolas.mesot@ipt.ch'),
                       User(name='Patrick Plattner', email='patrick.plattner@ipt.ch'),
