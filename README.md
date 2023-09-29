@@ -113,8 +113,9 @@ There is a helper script in `genius_collection/core/management/commands/create_d
 * Cards
 * Gives the users some cards
 
-You can execute it with:
+For privacy reasons, this files is not versioned by git (this repo is public). Please download it from GDrive [here](https://drive.google.com/file/d/1z2skId5GmNs4oqamrTOKokGPYvYUaDms/view?usp=drive_link)
+
+You can then execute it with:
 `python manage.py create_dummy_data`
 
 If you want to get a clean database (without deleting the tables), execute:
-`python manage.py flush`
