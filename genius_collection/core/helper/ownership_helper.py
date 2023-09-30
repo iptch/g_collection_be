@@ -1,24 +1,15 @@
-
 from ..models import Card, User, Ownership
 
-class OwnershipHelper():
 
+class OwnershipHelper:
     @staticmethod
-    def transfer_ownership(current_user: User, ownership: Ownership, card: Card):
-        if ownership.quantity == 1:
-            ownership.user = current_user
-            ownership.otp = None
-            ownership.save()
-            return
-        elif ownership.quantity > 1:
-            new_ownership = OwnershipHelper().__create_new_ownership(current_user, card)
-            new_ownership.save()
-    
-        OwnershipHelper().__decrease_quantity_by_one(ownership)
-        return
-    
-    def __create_new_ownership(self, user: User, card: Card):
-        return Ownership.objects.add_card_to_user(user=user, card=card)
+    def transfer_ownership(to_user: User, giver_ownership: Ownership, card: Card):
+        from_user = giver_ownership.user
 
-    def __decrease_quantity_by_one(self, ownership: Ownership):
-        ownership.quantity -= 1
+        receiver_ownership = Ownership.objects.add_card_to_user(user=to_user, card=card)
+        giver_ownership.otp_valid_to = None
+        giver_ownership.otp_value = None
+        giver_ownership.save()
+        giver_ownership = Ownership.objects.remove_card_from_user(user=from_user, card=card)
+
+        return giver_ownership, receiver_ownership

@@ -20,7 +20,8 @@ class CardSerializer(serializers.HyperlinkedModelSerializer):
         fields = ['id', 'name', 'acronym', 'team', 'job', 'superpower', 'highlight', 'must_have', 'image_url',
                   'quantity', 'last_received']
 
-    def get_image_url(self, obj):
+    @staticmethod
+    def get_image_url(obj):
         return get_blob_sas_url(obj.image_link)
 
     def get_quantity(self, obj):
