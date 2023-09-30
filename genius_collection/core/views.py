@@ -55,14 +55,6 @@ class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
             return Response(
                 {'status': f'Card transferred successfully. Now {giver_ownership} and {receiver_ownership}'})
 
-    @action(detail=True, methods=['get'], url_path='get_otp')
-    def get_otp(self, request, pk):
-        ownership = Ownership.objects.get(user=request.user, card=pk)
-        ownership.otp_value = ''.join(choice(ascii_lowercase) for _ in range(16))
-        ownership.otp_valid_to = datetime.now() + timedelta(minutes=5)
-        ownership.save()
-        return Response({'otp_value': ownership.otp_value, 'otp_valid_to': ownership.otp_valid_to})
-
 
 class OverviewViewSet(APIView):
     authentication_classes = [JWTAccessTokenAuthentication]
