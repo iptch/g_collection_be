@@ -36,16 +36,11 @@ Either use the devcontainer in `.devcontainer` with VS Code (described above) or
 * Run local server `python manage.py runserver`
 
 ## Authentication
-All Calls need a JWT Token. Get one via Curl or Postman. It is valid for 1 hour.
-
-```
-curl --request POST 'https://login.microsoftonline.com/a9080dcf-8589-4cb6-a2e2-21398dc6c671/oauth2/token' \
---header 'Content-Type: application/x-www-form-urlencoded' \\
---data-urlencode 'client_id=dd268c17-3b91-47ab-bcb4-1f87f8a0129d' \
---data-urlencode 'client_secret=XXX' \
---data-urlencode 'grant_type=client_credentials' \
---data-urlencode 'resource=api://ae04e6aa-6cb5-4c16-9d3b-45bd6a79845c'
-```
+All Calls need a JWT Token. Get one from the published app.
+1. In Chrome via Developer Tools
+2. Network
+3. Open the *cards* overview
+4. Copy the *Authorization:* part from Request Header of `cards` (not `cards/`)
 
 Example Call with JWT
 ```
