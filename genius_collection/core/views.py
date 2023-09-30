@@ -4,9 +4,6 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from genius_collection.core.serializers import UserSerializer, CardSerializer
-from datetime import datetime, timedelta
-from random import choice
-from string import ascii_lowercase
 
 from .models import Card, User, Ownership
 from .jwt_validation import JWTAccessTokenAuthentication

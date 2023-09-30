@@ -11,7 +11,7 @@ from genius_collection.core.blob_sas import get_blob_sas_url
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['email', 'name']
+        fields = ['email', 'first_name', 'last_name', 'is_admin']
 
 
 class CardSerializer(serializers.HyperlinkedModelSerializer):
