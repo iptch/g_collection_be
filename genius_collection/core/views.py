@@ -1,7 +1,8 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
+from rest_framework import status, viewsets
 from rest_framework.request import HttpRequest
+from rest_framework.response import Response
+from rest_framework.decorators import action
+from rest_framework.views import APIView
 from genius_collection.core.serializers import UserSerializer, CardSerializer
 
 from .models import Card, User, Ownership
@@ -51,3 +52,28 @@ class CardViewSet(viewsets.ModelViewSet):
         OwnershipHelper.transfer_ownership(request.user, ownership, card)
 
         return Response({"status": f"Card transfered successfully, Brate, now {ownership}"})
+
+
+class OverviewViewSet(APIView):
+    authentication_classes = [JWTAccessTokenAuthentication]
+
+    @action(methods=['get'], detail=False)
+    def get(self, request, *args, **kwargs):
+        user_cards = User.objects.get(email=request.user.email).cards.all()
+
+        rankings = [{
+            'uniqueCardsCount': u.cards.count(),
+            'displayName': u.name,
+            'userEmail': u.email
+        } for u in User.objects.all()]
+        rankings.sort(key=lambda r: r['uniqueCardsCount'], reverse=True)
+        for i in range(len(rankings)):
+            rankings[i]['rank'] = i + 1
+
+        return Response({
+            'myCardsCount': user_cards.count(),
+            'myUniqueCardsCount': user_cards.distinct().count(),
+            'allCardsCount': Card.objects.all().count(),
+            'duplicateCardsCount': user_cards.count() - user_cards.distinct().count(),
+            'rankingList': rankings
+        })
