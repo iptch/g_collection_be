@@ -73,7 +73,7 @@ class OverviewViewSet(APIView):
 
         rankings = [{
             'uniqueCardsCount': u.cards.count(),
-            'displayName': u.name,
+            'displayName': str(u),
             'userEmail': u.email
         } for u in User.objects.all()]
         rankings.sort(key=lambda r: r['uniqueCardsCount'], reverse=True)
