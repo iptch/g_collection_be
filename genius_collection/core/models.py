@@ -25,14 +25,6 @@ class User(models.Model):
     cards = models.ManyToManyField(Card, through='Ownership')
 
 
-class Otp(models.Model):
-    def __str__(self):
-        return self.otp
-
-    otp = models.CharField(max_length=200)
-    valid_to = models.DateTimeField()
-
-
 class OwnershipManager(models.Manager):
     def add_card_to_user(self, user, card):
         # Check if the user already owns the card
@@ -45,13 +37,23 @@ class OwnershipManager(models.Manager):
 
         return ownership
 
+    def remove_card_from_user(self, user, card):
+        ownership = self.get(user=user, card=card)
+        if ownership.quantity > 1:
+            ownership.quantity -= 1
+            ownership.save()
+            return ownership
+        else:
+            ownership.delete()
+            return None
+
     def assign_ownership(self, user, num_samples, num_duplicates=0):
         cards = Card.objects.all()
         num_cards = len(cards)
         if num_cards == 0:
             return
         card_indices = random.choices(range(num_cards), k=num_samples)
-        
+
         for idx in card_indices:
             self.add_card_to_user(user=user, card=Card.objects.all()[idx])
 
@@ -59,7 +61,8 @@ class OwnershipManager(models.Manager):
 class Ownership(models.Model):
     user = models.ForeignKey(User, on_delete=models.RESTRICT)
     card = models.ForeignKey(Card, on_delete=models.RESTRICT)
-    otp = models.ForeignKey(Otp, on_delete=models.RESTRICT, blank=True, null=True)
+    otp_value = models.CharField(null=True, max_length=16)
+    otp_valid_to = models.DateTimeField(null=True)
     quantity = models.PositiveIntegerField(default=1)
     last_received = models.DateTimeField(auto_now=True)
     objects = OwnershipManager()

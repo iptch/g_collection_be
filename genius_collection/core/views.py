@@ -1,17 +1,19 @@
-from rest_framework import status, viewsets
-from rest_framework.request import HttpRequest
+from django.utils import timezone
+from rest_framework import status, viewsets, mixins
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from genius_collection.core.serializers import UserSerializer, CardSerializer
+from datetime import datetime, timedelta
+from random import choice
+from string import ascii_lowercase
 
 from .models import Card, User, Ownership
 from .jwt_validation import JWTAccessTokenAuthentication
-
 from .helper.ownership_helper import OwnershipHelper
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     API endpoint that allows users to be viewed or edited.
     """
@@ -20,7 +22,7 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
 
-class CardViewSet(viewsets.ModelViewSet):
+class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     API endpoint that allows cards to be viewed or edited.
     """
@@ -28,37 +30,45 @@ class CardViewSet(viewsets.ModelViewSet):
     queryset = Card.objects.all()
     serializer_class = CardSerializer
 
-    def list(self, request):
-        # Pass the request to the serializer context
-        serializer = CardSerializer(context={'request': request}, many=True)
-        data = serializer.to_representation(self.queryset)
-        return Response(data)
-
     @action(detail=False, methods=['post'], url_path='transfer')
-    def transfer(self, request: HttpRequest):
-
-        giver: User = User.objects.get(email=request.data["giver"])
-        card: Card = Card.objects.get(id=request.data["id"])
+    def transfer(self, request):
+        giver = User.objects.get(email=request.data['giver'])
+        card = Card.objects.get(id=request.data['id'])
 
         try:
-            ownership: Ownership = Ownership.objects.get(user=giver, card=card)
+            ownership = Ownership.objects.get(user=giver, card=card)
         except Ownership.DoesNotExist:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data=f"Oh Brate, Ownership does not exist!")
+            return Response(status=status.HTTP_404_NOT_FOUND, data=f'The giver does not own this card.')
 
-        if ownership.otp != request.data["otp"]:
+        if ownership.otp_value != request.data['otp']:
             return Response(status=status.HTTP_400_BAD_REQUEST,
-                            data={"status": f"Your otp does not match the one in the Database innit."})
+                            data={'status': f'The OTP does not match with the one stored in the database.'})
 
-        OwnershipHelper.transfer_ownership(request.user, ownership, card)
+        if ownership.otp_valid_to < timezone.now():
+            return Response(status=status.HTTP_400_BAD_REQUEST,
+                            data={'status': f'The OTP is no longer valid.'})
 
-        return Response({"status": f"Card transfered successfully, Brate, now {ownership}"})
+        giver_ownership, receiver_ownership = OwnershipHelper.transfer_ownership(request.user, ownership, card)
+        if giver_ownership is None:
+            return Response({'status': f'Card transferred successfully. Now {receiver_ownership}.'})
+        else:
+            return Response(
+                {'status': f'Card transferred successfully. Now {giver_ownership} and {receiver_ownership}'})
+
+    @action(detail=True, methods=['get'], url_path='get_otp')
+    def get_otp(self, request, pk):
+        ownership = Ownership.objects.get(user=request.user, card=pk)
+        ownership.otp_value = ''.join(choice(ascii_lowercase) for _ in range(16))
+        ownership.otp_valid_to = datetime.now() + timedelta(minutes=5)
+        ownership.save()
+        return Response({'otp_value': ownership.otp_value, 'otp_valid_to': ownership.otp_valid_to})
 
 
 class OverviewViewSet(APIView):
     authentication_classes = [JWTAccessTokenAuthentication]
 
     @action(methods=['get'], detail=False)
-    def get(self, request, *args, **kwargs):
+    def get(self, request):
         user_cards = User.objects.get(email=request.user.email).cards.all()
 
         rankings = [{

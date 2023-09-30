@@ -1,5 +1,11 @@
 # Genius Collection 2.0 - Backend
-Endpoint: https://g-collection.scm.azurewebsites.net/ 
+## Endpoints
+
+Root: 
+* Remote: https://g-collection.scm.azurewebsites.net/
+* Local: http://127.0.0.1:8000/
+
+Swagger: http://localhost:8000/swagger/
 
 ## Overview
 This backend works with Django and Django Rest Framework. Data is stored in SQLite (local) or Postgres (remote) Database. The application is hosted on Azure. The authentication works via Azure OAuth which federates the requests to Google Cloud.
