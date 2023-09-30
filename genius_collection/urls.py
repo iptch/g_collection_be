@@ -19,7 +19,7 @@ schema_view = get_schema_view(
         license=openapi.License(name="BSD License"),
     ),
     public=True,
-    permission_classes=(permissions.AllowAny,),
+    permission_classes=[permissions.AllowAny],
 )
 
 # Wire up our API using automatic URL routing.
@@ -29,5 +29,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
-    path('overview/', views.OverviewViewSet.as_view())
+    path('overview/', views.OverviewViewSet.as_view()),
+    path('distribute/', views.DistributeViewSet.as_view())
 ]

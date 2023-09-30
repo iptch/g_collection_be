@@ -23,6 +23,7 @@ class User(models.Model):
     email = models.CharField(max_length=200)
     name = models.CharField(max_length=200)
     cards = models.ManyToManyField(Card, through='Ownership')
+    is_admin = models.BooleanField(default=False)
 
 
 class OwnershipManager(models.Manager):
@@ -47,7 +48,7 @@ class OwnershipManager(models.Manager):
             ownership.delete()
             return None
 
-    def assign_ownership(self, user, num_samples, num_duplicates=0):
+    def assign_ownership(self, user, num_samples):
         cards = Card.objects.all()
         num_cards = len(cards)
         if num_cards == 0:
