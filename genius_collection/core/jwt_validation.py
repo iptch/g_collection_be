@@ -5,6 +5,7 @@ import requests
 import jwt
 
 from .crypto import rsa_pem_from_jwk
+from .models import User
 
 from rest_framework import authentication
 from rest_framework import exceptions
@@ -37,11 +38,14 @@ class JWTAccessTokenAuthentication(authentication.BaseAuthentication):
         if not match:
             raise exceptions.AuthenticationFailed("Authorization header must start with Bearer followed by its token")
         raw_jwt = match.groups()[-1]
-        self.verify_jwt(token=raw_jwt,
+        decoded_token = self.verify_jwt(token=raw_jwt,
                         valid_audiences=[valid_audience],
                         issuer=issue,
                         jwks_uri=jwks_uri,
                         verify=True, )
+        
+        current_user: User = User.objects.get(email=decoded_token["unique_name"])
+        return current_user, self
 
     def verify_jwt(self,
                    token,
