@@ -18,10 +18,11 @@ class Card(models.Model):
 
 class User(models.Model):
     def __str__(self):
-        return self.name
+        return f'{self.first_name} {self.last_name}'
 
     email = models.CharField(max_length=200)
-    name = models.CharField(max_length=200)
+    first_name = models.CharField(max_length=200)
+    last_name = models.CharField(max_length=200)
     cards = models.ManyToManyField(Card, through='Ownership')
     is_admin = models.BooleanField(default=False)
 
