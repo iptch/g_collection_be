@@ -39,11 +39,11 @@ class JWTAccessTokenAuthentication(authentication.BaseAuthentication):
             raise exceptions.AuthenticationFailed("Authorization header must start with Bearer followed by its token")
         raw_jwt = match.groups()[-1]
         decoded_token = self.verify_jwt(token=raw_jwt,
-                        valid_audiences=[valid_audience],
-                        issuer=issue,
-                        jwks_uri=jwks_uri,
-                        verify=True, )
-        
+                                        valid_audiences=[valid_audience],
+                                        issuer=issue,
+                                        jwks_uri=jwks_uri,
+                                        verify=True, )
+
         current_user: User = User.objects.get(email=decoded_token["unique_name"])
         return current_user, self
 

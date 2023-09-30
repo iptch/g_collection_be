@@ -119,7 +119,7 @@ There is a helper script in `genius_collection/core/management/commands/create_d
 * Cards
 * Gives the users some cards
 
-For privacy reasons, this file is not versioned by git (this repo is public). Please download it from GDrive [here](https://drive.google.com/file/d/1z2skId5GmNs4oqamrTOKokGPYvYUaDms/view?usp=drive_link)
+For privacy reasons, this file is not versioned by git (this repo is public). Please download it from GDrive [here](https://drive.google.com/drive/folders/1mXfz3zuI-GgLg70Suv64R33N9iZzlbTZ)
 
 You can then execute it with:
 `python manage.py create_dummy_data`
