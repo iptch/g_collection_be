@@ -83,6 +83,11 @@ Based on this [tutorial](https://learn.microsoft.com/en-us/azure/app-service/tut
 
 ## DB configuration
 ### resetting to empty state
+If you just want to get a clean database (without deleting the tables), execute:
+`python manage.py flush`
+
+Otherwise: 
+
 #### local
 * delete `db.sqlite3`
 * `python manage.py makemigrations`
@@ -96,7 +101,7 @@ Based on this [tutorial](https://learn.microsoft.com/en-us/azure/app-service/tut
 ### Postgres Connection
 Ensure the Firewall allows connection from your IP:
 
-Ressource Group: *rg-genius-collection* > Database: *g-collection-postgres* > Settings > Networking
+Resource Group: *rg-genius-collection* > Database: *g-collection-postgres* > Settings > Networking
 
 Then connect via a DB Viewer:
 
@@ -114,10 +119,13 @@ There is a helper script in `genius_collection/core/management/commands/create_d
 * Cards
 * Gives the users some cards
 
-For privacy reasons, this files is not versioned by git (this repo is public). Please download it from GDrive [here](https://drive.google.com/file/d/1z2skId5GmNs4oqamrTOKokGPYvYUaDms/view?usp=drive_link)
+For privacy reasons, this file is not versioned by git (this repo is public). Please download it from GDrive [here](https://drive.google.com/file/d/1z2skId5GmNs4oqamrTOKokGPYvYUaDms/view?usp=drive_link)
 
 You can then execute it with:
 `python manage.py create_dummy_data`
 
-If you want to get a clean database (without deleting the tables), execute:
-`python manage.py flush`
+If you need to repopulate the remote database, you first need to make this script available in the app. For that:
+* Connect via Azure Portal > App Service > SSH
+* Create the file via vim: `vim genius_collection/core/management/commands/create_dummy_data.py`
+* Insert & Paste Content
+* Execute `python manage.py create_dummy_data`
