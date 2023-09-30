@@ -1,3 +1,4 @@
+import random
 from django.db import models
 
 
@@ -43,6 +44,16 @@ class OwnershipManager(models.Manager):
             ownership.save()
 
         return ownership
+
+    def assign_ownership(self, user, num_samples, num_duplicates=0):
+        cards = Card.objects.all()
+        num_cards = len(cards)
+        if num_cards == 0:
+            return
+        card_indices = random.choices(range(num_cards), k=num_samples)
+        
+        for idx in card_indices:
+            self.add_card_to_user(user=user, card=Card.objects.all()[idx])
 
 
 class Ownership(models.Model):
