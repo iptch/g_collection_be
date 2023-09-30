@@ -87,3 +87,24 @@ class OverviewViewSet(APIView):
             'duplicateCardsCount': user_cards.count() - user_cards.distinct().count(),
             'rankingList': rankings
         })
+
+
+class DistributeViewSet(APIView):
+    authentication_classes = [JWTAccessTokenAuthentication]
+
+    @action(methods=['post'], detail=False)
+    def post(self, request):
+        if not request.user.is_admin:
+            return Response(status=status.HTTP_403_FORBIDDEN,
+                            data={'status': f'You are not an admin.'})
+        receivers = []
+        if request.data['receivers'] == 'all':
+            receivers = User.objects.all()
+        else:
+            for r in request.data['receivers']:
+                receivers.append(User.objects.get(email=r))
+        for receiver in receivers:
+            Ownership.objects.assign_ownership(receiver, int(request.data['quantity']))
+
+        return Response(
+            {'status': f'{request.data["quantity"]} cards successfully distributed to {request.data["receivers"]}.'})
