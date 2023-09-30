@@ -13,11 +13,12 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 class CardSerializer(serializers.HyperlinkedModelSerializer):
     image_url = serializers.SerializerMethodField()
     quantity = serializers.SerializerMethodField()
+    last_received = serializers.SerializerMethodField()
 
     class Meta:
         model = Card
         fields = ['id', 'name', 'acronym', 'team', 'job', 'superpower', 'highlight', 'must_have', 'image_url',
-                  'quantity']
+                  'quantity', 'last_received']
 
     def get_image_url(self, obj):
         return get_blob_sas_url(obj.image_link)
@@ -29,3 +30,11 @@ class CardSerializer(serializers.HyperlinkedModelSerializer):
             return 0
         else:
             return result.quantity
+
+    def get_last_received(self, obj):
+        result = Ownership.objects.filter(card=obj, user=self.context["request"].user).first()
+
+        if result is None:
+            return None
+        else:
+            return result.last_received

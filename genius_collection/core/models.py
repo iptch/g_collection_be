@@ -61,7 +61,7 @@ class Ownership(models.Model):
     card = models.ForeignKey(Card, on_delete=models.RESTRICT)
     otp = models.ForeignKey(Otp, on_delete=models.RESTRICT, blank=True, null=True)
     quantity = models.PositiveIntegerField(default=1)
-
+    last_received = models.DateTimeField(auto_now=True)
     objects = OwnershipManager()
 
     def __str__(self):
