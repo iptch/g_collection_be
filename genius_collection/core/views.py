@@ -35,7 +35,8 @@ class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
         try:
             ownership = Ownership.objects.get(user=giver, card=card)
         except Ownership.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND, data=f'The giver does not own this card.')
+            return Response(status=status.HTTP_404_NOT_FOUND,
+                            data={'status': f'The giver does not own this card.'})
 
         if ownership.otp_value != request.data['otp']:
             return Response(status=status.HTTP_400_BAD_REQUEST,
