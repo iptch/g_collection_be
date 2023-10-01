@@ -26,17 +26,19 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
             current_user.last_login = timezone.now()
             current_user.save()
             return Response(
-                data={'status': f'User already exists in DB.',
+                data={'status': f'User in Datenbank gefunden.',
                       'user': self.get_serializer(current_user).data,
                       'last_login': last_login})
         except User.DoesNotExist:
-            user = User.objects.create_user(first_name=request.user['first_name'],
-                                            last_name=request.user['last_name'],
-                                            email=request.user['email'])
+            user, self_card_assigned = User.objects.create_user(first_name=request.user['first_name'],
+                                                                last_name=request.user['last_name'],
+                                                                email=request.user['email'])
+
             return Response(status=status.HTTP_201_CREATED,
-                            data={'status': f'User successfully created',
+                            data={'status': 'User erfolgreich erstellt.',
                                   'user': self.get_serializer(user).data,
-                                  'last_login': None})
+                                  'last_login': None,
+                                  'self_card_assigned': self_card_assigned})
 
 
 class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -57,22 +59,22 @@ class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
             ownership = Ownership.objects.get(user=giver, card=card)
         except Ownership.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND,
-                            data={'status': f'The giver does not own this card.'})
+                            data={'status': f'Der Sender besitzt diese Karte nicht.'})
 
         if ownership.otp_value != request.data['otp']:
             return Response(status=status.HTTP_400_BAD_REQUEST,
-                            data={'status': f'The OTP does not match with the one stored in the database.'})
+                            data={'status': f'Das OTP stimmt nicht mit dem in der Datenbank überein.'})
 
         if ownership.otp_valid_to < timezone.now():
             return Response(status=status.HTTP_400_BAD_REQUEST,
-                            data={'status': f'The OTP is no longer valid. Tell the giver to reload the card!'})
+                            data={
+                                'status': f'Das OTP ist nicht mehr gültig. Bitte den Sender, die Karte neu zu laden.'})
         current_user = User.objects.get(email=request.user['email'])
         giver_ownership, receiver_ownership = Ownership.objects.transfer_ownership(current_user, ownership, card)
         if giver_ownership is None:
-            return Response({'status': f'Card transferred successfully. Now {receiver_ownership}.'})
+            return Response({'status': f'Karte erfolgreich transferiert. {receiver_ownership}.'})
         else:
-            return Response(
-                {'status': f'Card transferred successfully. Now {giver_ownership} and {receiver_ownership}'})
+            return Response({'status': f'Karte erfolgreich transferiert. {giver_ownership} und {receiver_ownership}.'})
 
 
 class OverviewViewSet(APIView):
@@ -114,7 +116,7 @@ class DistributeViewSet(APIView):
         current_user = User.objects.get(email=request.user['email'])
         if not current_user.is_admin:
             return Response(status=status.HTTP_403_FORBIDDEN,
-                            data={'status': f'You are not an admin.'})
+                            data={'status': f'Du bist kein Admin.'})
         receivers = []
         if request.data['receivers'] == 'all':
             receivers = User.objects.all()
@@ -125,4 +127,4 @@ class DistributeViewSet(APIView):
             Ownership.objects.distribute_random_cards(receiver, int(request.data['quantity']))
 
         return Response(
-            {'status': f'{request.data["quantity"]} cards successfully distributed to {request.data["receivers"]}.'})
+            {'status': f'{request.data["quantity"]} Karten erfolgreich verteilt.'})

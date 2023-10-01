@@ -22,8 +22,11 @@ class UserManager(models.Manager):
     def create_user(self, first_name, last_name, email, init_cards=10, init_self=5):
         user = self.create(first_name=first_name, last_name=last_name, email=email)
         Ownership.objects.distribute_random_cards(user, init_cards)
-        Ownership.objects.distribute_self_cards_to_user(user, init_self)
-        return user
+        try:
+            Ownership.objects.distribute_self_cards_to_user(user, init_self)
+            return user, True
+        except Card.DoesNotExist:
+            return user, False
 
 
 class User(models.Model):
@@ -40,6 +43,7 @@ class User(models.Model):
 
 
 class OwnershipManager(models.Manager):
+
     def add_card_to_user(self, user, card, qty=1):
         """
         Increase the quantity of the owned card of a user or add it as a new ownership.
@@ -113,4 +117,4 @@ class Ownership(models.Model):
     objects = OwnershipManager()
 
     def __str__(self):
-        return f'{self.user} owns {self.quantity} of {self.card}'
+        return f'{self.user} besitzt {self.quantity} {self.card}'
