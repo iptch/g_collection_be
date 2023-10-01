@@ -44,7 +44,7 @@ class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
 
         if ownership.otp_valid_to < timezone.now():
             return Response(status=status.HTTP_400_BAD_REQUEST,
-                            data={'status': f'The OTP is no longer valid.'})
+                            data={'status': f'The OTP is no longer valid. Tell the giver to reload the card!'})
 
         giver_ownership, receiver_ownership = OwnershipHelper.transfer_ownership(request.user, ownership, card)
         if giver_ownership is None:
