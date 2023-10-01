@@ -7,27 +7,48 @@ from genius_collection.core.serializers import UserSerializer, CardSerializer
 
 from .models import Card, User, Ownership
 from .jwt_validation import JWTAccessTokenAuthentication
-from .helper.ownership_helper import OwnershipHelper
 
 
 class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """
-    API endpoint that allows users to be viewed or edited.
+    API endpoint that allows users to be viewed or initialized.
     """
     authentication_classes = [JWTAccessTokenAuthentication]
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+    @action(detail=False, methods=['post'], url_path='init',
+            description='Checks if an user exists. If not, the user is initialized')
+    def init(self, request):
+        try:
+            current_user = User.objects.get(email=request.user['email'])
+            last_login = current_user.last_login
+            current_user.last_login = timezone.now()
+            current_user.save()
+            return Response(
+                data={'status': f'User already exists in DB.',
+                      'user': self.get_serializer(current_user).data,
+                      'last_login': last_login})
+        except User.DoesNotExist:
+            user = User.objects.create_user(first_name=request.user['first_name'],
+                                            last_name=request.user['last_name'],
+                                            email=request.user['email'])
+            return Response(status=status.HTTP_201_CREATED,
+                            data={'status': f'User successfully created',
+                                  'user': self.get_serializer(user).data,
+                                  'last_login': None})
+
 
 class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """
-    API endpoint that allows cards to be viewed or edited.
+    API endpoint that allows cards to be viewed or transferred.
     """
     authentication_classes = [JWTAccessTokenAuthentication]
     queryset = Card.objects.all()
     serializer_class = CardSerializer
 
-    @action(detail=False, methods=['post'], url_path='transfer')
+    @action(detail=False, methods=['post'], url_path='transfer',
+            description='Removes a card from the giver and adds it to the current user.')
     def transfer(self, request):
         giver = User.objects.get(email=request.data['giver'])
         card = Card.objects.get(id=request.data['id'])
@@ -45,8 +66,8 @@ class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
         if ownership.otp_valid_to < timezone.now():
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data={'status': f'The OTP is no longer valid. Tell the giver to reload the card!'})
-
-        giver_ownership, receiver_ownership = OwnershipHelper.transfer_ownership(request.user, ownership, card)
+        current_user = User.objects.get(email=request.user['email'])
+        giver_ownership, receiver_ownership = Ownership.objects.transfer_ownership(current_user, ownership, card)
         if giver_ownership is None:
             return Response({'status': f'Card transferred successfully. Now {receiver_ownership}.'})
         else:
@@ -55,11 +76,14 @@ class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
 
 
 class OverviewViewSet(APIView):
+    """
+    API endpoint that gives a score and ranking overview for the current user.
+    """
     authentication_classes = [JWTAccessTokenAuthentication]
 
-    @action(methods=['get'], detail=False)
+    @action(methods=['get'], detail=False, description='Returns the score and ranking overview for the current user.')
     def get(self, request):
-        user_cards = User.objects.get(email=request.user.email).cards.all()
+        user_cards = User.objects.get(email=request.user['email']).cards.all()
 
         rankings = [{
             'uniqueCardsCount': u.cards.count(),
@@ -80,11 +104,15 @@ class OverviewViewSet(APIView):
 
 
 class DistributeViewSet(APIView):
+    """
+    API endpoint that allows admins to distribute cards to users.
+    """
     authentication_classes = [JWTAccessTokenAuthentication]
 
-    @action(methods=['post'], detail=False)
+    @action(methods=['post'], detail=False, description='Distributes cards to a list of users or to all users.')
     def post(self, request):
-        if not request.user.is_admin:
+        current_user = User.objects.get(email=request.user['email'])
+        if not current_user.is_admin:
             return Response(status=status.HTTP_403_FORBIDDEN,
                             data={'status': f'You are not an admin.'})
         receivers = []
@@ -94,7 +122,7 @@ class DistributeViewSet(APIView):
             for r in request.data['receivers']:
                 receivers.append(User.objects.get(email=r))
         for receiver in receivers:
-            Ownership.objects.assign_ownership(receiver, int(request.data['quantity']))
+            Ownership.objects.distribute_random_cards(receiver, int(request.data['quantity']))
 
         return Response(
             {'status': f'{request.data["quantity"]} cards successfully distributed to {request.data["receivers"]}.'})

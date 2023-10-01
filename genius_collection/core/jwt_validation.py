@@ -44,7 +44,11 @@ class JWTAccessTokenAuthentication(authentication.BaseAuthentication):
                                         jwks_uri=jwks_uri,
                                         verify=True, )
 
-        current_user: User = User.objects.get(email=decoded_token["unique_name"])
+        # current_user: User = User.objects.get(email=decoded_token["unique_name"])
+        current_user = {'email': decoded_token['unique_name'],
+                        'first_name': decoded_token['given_name'],
+                        'last_name': decoded_token['family_name']}
+        # current_user = decoded_token["unique_name"]
         return current_user, self
 
     def verify_jwt(self,

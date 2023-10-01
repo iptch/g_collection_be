@@ -10,7 +10,7 @@ def test_assign_ownership():
     user = User.objects.all()[0]
     manager = Ownership.objects
     ownerships_before = Ownership.objects.aggregate(Sum("quantity"))['quantity__sum']
-    manager.assign_ownership(user, num_samples=num_samples)
+    manager.distribute_random_cards(user, qty=num_samples)
     ownerships_after = Ownership.objects.aggregate(Sum("quantity"))['quantity__sum']
     assert num_samples == (ownerships_after - ownerships_before)
 

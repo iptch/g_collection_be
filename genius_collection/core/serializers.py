@@ -23,8 +23,8 @@ class CardSerializer(serializers.HyperlinkedModelSerializer):
         data = super().to_representation(obj)
 
         data['image_url'] = get_blob_sas_url(obj.image_link)
-
-        ownership = Ownership.objects.filter(card=obj, user=self.context["request"].user).first()
+        current_user = User.objects.get(email=self.context['request'].user['email'])
+        ownership = Ownership.objects.filter(card=obj, user=current_user).first()
         if ownership is None:
             data['otp_value'] = None
             data['otp_valid_to'] = None
