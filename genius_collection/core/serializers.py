@@ -6,6 +6,7 @@ from string import ascii_lowercase
 
 from .models import Card, User, Ownership
 from genius_collection.core.blob_sas import get_blob_sas_url
+from django.db.models import QuerySet
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -22,7 +23,13 @@ class CardSerializer(serializers.HyperlinkedModelSerializer):
     def to_representation(self, obj):
         data = super().to_representation(obj)
 
-        data['image_url'] = get_blob_sas_url(obj.image_link)
+        # Return url to high resolution image for detail view
+        # and url to low resolution image for thumbnails
+        if isinstance(self.instance, (list, QuerySet)):
+            data['image_url'] = get_blob_sas_url("card-thumbnails", obj.image_link)
+        else:
+            data['image_url'] = get_blob_sas_url("card-detail-views", obj.image_link)
+
         current_user = User.objects.get(email=self.context['request'].user['email'])
         ownership = Ownership.objects.filter(card=obj, user=current_user).first()
         if ownership is None:
