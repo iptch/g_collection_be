@@ -20,7 +20,7 @@ class Card(models.Model):
 class UserManager(models.Manager):
     # Use the manager instead of overriding the __init__ method. See:
     # https://docs.djangoproject.com/en/4.2/ref/models/instances/
-    def create_user(self, first_name, last_name, email, init_cards=10, init_self=5):
+    def create_user(self, first_name, last_name, email, init_cards=10, init_self=20):
         user = self.create(first_name=first_name, last_name=last_name, email=email)
         Ownership.objects.distribute_random_cards(user, init_cards)
         try:
