@@ -1,5 +1,6 @@
 import random
 from django.db import models
+from django.utils import timezone
 
 
 class Card(models.Model):
@@ -55,6 +56,7 @@ class OwnershipManager(models.Manager):
             ownership.quantity = qty
         else:
             ownership.quantity += qty
+            ownership.last_received = timezone.now()
         ownership.save()
 
         return ownership
@@ -113,7 +115,7 @@ class Ownership(models.Model):
     otp_value = models.CharField(null=True, max_length=16)
     otp_valid_to = models.DateTimeField(null=True)
     quantity = models.PositiveIntegerField(default=1)
-    last_received = models.DateTimeField(auto_now=True)
+    last_received = models.DateTimeField(auto_now_add=True)
     objects = OwnershipManager()
 
     def __str__(self):
