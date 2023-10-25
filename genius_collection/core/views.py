@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from genius_collection.core.serializers import UserSerializer, CardSerializer
-
+from django.db.models import Sum
 from .models import Card, User, Ownership
 from .jwt_validation import JWTAccessTokenAuthentication
 
@@ -86,7 +86,7 @@ class OverviewViewSet(APIView):
     @action(methods=['get'], detail=False, description='Returns the score and ranking overview for the current user.')
     def get(self, request):
         user_cards = User.objects.get(email=request.user['email']).cards.all()
-
+        total_quantity = Ownership.objects.aggregate(total_quantity=Sum('quantity'))['total_quantity']
         rankings = [{
             'uniqueCardsCount': u.cards.count(),
             'displayName': str(u),
@@ -98,6 +98,7 @@ class OverviewViewSet(APIView):
 
         return Response({
             'myCardsCount': user_cards.count(),
+            'totalCardQuantity': total_quantity,
             'myUniqueCardsCount': user_cards.distinct().count(),
             'allCardsCount': Card.objects.all().count(),
             'duplicateCardsCount': user_cards.count() - user_cards.distinct().count(),
