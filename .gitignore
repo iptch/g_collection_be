@@ -162,5 +162,6 @@ cython_debug/
 .idea
 staticfiles
 .env_postgres
+.env_sqlite
 
 /genius_collection/core/management/commands/create_dummy_data.py

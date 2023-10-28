@@ -5,8 +5,10 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 from genius_collection.core.serializers import UserSerializer, CardSerializer
 from django.db.models import Sum
+from django.db import connection
 from .models import Card, User, Ownership
 from .jwt_validation import JWTAccessTokenAuthentication
+from genius_collection.core.blob_sas import get_blob_sas_url
 
 
 class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -41,13 +43,53 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
                                   'self_card_assigned': self_card_assigned})
 
 
-class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
+class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    # class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     API endpoint that allows cards to be viewed or transferred.
     """
     authentication_classes = [JWTAccessTokenAuthentication]
     queryset = Card.objects.all()
     serializer_class = CardSerializer
+
+    @staticmethod
+    def dict_fetchall(cursor):
+        """Return all rows from a cursor as a dict"""
+        columns = [col[0] for col in cursor.description]
+        return [
+            dict(zip(columns, row))
+            for row in cursor.fetchall()
+        ]
+
+    def list(self, request, *args, **kwargs):
+        # Override the list method to circumvent the serializer calling the DB many times
+        # https://www.cdrf.co/3.9/rest_framework.viewsets/ReadOnlyModelViewSet.html#list
+        cursor = connection.cursor()
+
+        query = f"""
+            with co as (
+            select
+                *
+            from
+                core_ownership co
+            join core_user cu on
+                co.user_id = cu.id
+            where
+                cu.email = '{request.user['email']}')
+            select
+                coalesce(co.quantity,
+                0) as quantity,
+                co.last_received,
+                cc.*
+            from
+                core_card cc
+            left join co on
+                cc.id = co.card_id
+        """
+        cursor.execute(query)
+        card_dicts = self.dict_fetchall(cursor)
+        cards = [dict(c, **{'image_url': get_blob_sas_url('card-thumbnails', c['image_link'])}) for c in card_dicts]
+        return Response(cards)
 
     @action(detail=False, methods=['post'], url_path='transfer',
             description='Removes a card from the giver and adds it to the current user.')
