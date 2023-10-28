@@ -11,7 +11,7 @@ class Card(models.Model):
     acronym = models.CharField(max_length=3)
     job = models.CharField(max_length=200)
     start_at_ipt = models.DateField()
-    # TODO missing email-column!
+    # email = models.CharField(max_length=200)
     # TODO check the logic that assigns the user its own stuff (over email?)
     wish_destination = models.CharField(max_length=200)
     wish_person = models.CharField(max_length=200)
@@ -117,7 +117,7 @@ class Ownership(models.Model):
     otp_value = models.CharField(null=True, max_length=16)
     otp_valid_to = models.DateTimeField(null=True)
     quantity = models.PositiveIntegerField(default=1)
-    last_received = models.DateTimeField(auto_now_add=True)
+    last_received = models.DateTimeField(auto_now=True)
     objects = OwnershipManager()
 
     def __str__(self):
