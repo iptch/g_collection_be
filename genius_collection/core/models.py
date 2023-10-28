@@ -9,12 +9,14 @@ class Card(models.Model):
 
     name = models.CharField(max_length=200)
     acronym = models.CharField(max_length=3)
-    team = models.CharField(max_length=200)
     job = models.CharField(max_length=200)
-    superpower = models.CharField(max_length=200)
-    highlight = models.CharField(max_length=200)
-    must_have = models.CharField(max_length=200)
-    image_link = models.CharField(max_length=200)
+    start_at_ipt = models.DateField()
+    # TODO missing email-column!
+    # TODO check the logic that assigns the user its own stuff (over email?)
+    wish_destination = models.CharField(max_length=200)
+    wish_person = models.CharField(max_length=200)
+    wish_skill = models.CharField(max_length=200)
+    best_advice = models.CharField(max_length=200)
 
 
 class UserManager(models.Manager):

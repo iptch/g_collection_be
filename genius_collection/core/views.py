@@ -88,7 +88,7 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         """
         cursor.execute(query)
         card_dicts = self.dict_fetchall(cursor)
-        cards = [dict(c, **{'image_url': get_blob_sas_url('card-thumbnails', c['image_link'])}) for c in card_dicts]
+        cards = [dict(c, **{'image_url': get_blob_sas_url('card-thumbnails', c['acronym'])}) for c in card_dicts]
         return Response(cards)
 
     @action(detail=False, methods=['post'], url_path='transfer',

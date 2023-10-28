@@ -18,17 +18,14 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 class CardSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Card
-        fields = ['id', 'name', 'acronym', 'team', 'job', 'superpower', 'highlight', 'must_have']
+        # fields = ['id', 'name', 'acronym', 'team', 'job', 'superpower', 'highlight', 'must_have']
+        fields = ['id', 'name', 'acronym', 'job', 'start_at_ipt', 'wish_destination', 'wish_person', 'wish_skill',
+                  'best_advice']
 
     def to_representation(self, obj):
         data = super().to_representation(obj)
 
-        # Return url to high resolution image for detail view
-        # and url to low resolution image for thumbnails
-        if isinstance(self.instance, (list, QuerySet)):
-            data['image_url'] = get_blob_sas_url("card-thumbnails", obj.image_link)
-        else:
-            data['image_url'] = get_blob_sas_url("card-detail-views", obj.image_link)
+        data['image_url'] = get_blob_sas_url("card-detail-views", obj.acronym)
 
         current_user = User.objects.get(email=self.context['request'].user['email'])
         ownership = Ownership.objects.filter(card=obj, user=current_user).first()
