@@ -13,10 +13,10 @@ class Card(models.Model):
     start_at_ipt = models.DateField()
     # email = models.CharField(max_length=200)
     # TODO check the logic that assigns the user its own stuff (over email?)
-    wish_destination = models.CharField(max_length=200)
-    wish_person = models.CharField(max_length=200)
-    wish_skill = models.CharField(max_length=200)
-    best_advice = models.CharField(max_length=200)
+    wish_destination = models.CharField(max_length=200, null=True)
+    wish_person = models.CharField(max_length=200, null=True)
+    wish_skill = models.CharField(max_length=200, null=True)
+    best_advice = models.CharField(max_length=200, null=True)
 
 
 class UserManager(models.Manager):
