@@ -113,19 +113,8 @@ Then connect via a DB Viewer:
 
 FYI: The App Service connects via "Service Connector" to the Postgres Instance.
 
-### Creating Dummy Entries
-There is a helper script in `genius_collection/core/management/commands/create_dummy_data.py` that creates some
-* Users
-* Cards
-* Gives the users some cards
-
-For privacy reasons, this file is not versioned by git (this repo is public). Please download it from GDrive [here](https://drive.google.com/drive/folders/1mXfz3zuI-GgLg70Suv64R33N9iZzlbTZ)
-
-You can then execute it with:
-`python manage.py create_dummy_data`
-
-If you need to repopulate the remote database, you first need to make this script available in the app. For that:
-* Connect via Azure Portal > App Service > SSH
-* Create the file via vim: `vim genius_collection/core/management/commands/create_dummy_data.py`
-* Insert & Paste Content
-* Execute `python manage.py create_dummy_data`
+## Filling local DB with data
+Use the repository [g_collection_mgmt](https://github.com/iptch/g_collection_mgmt) to fill data to your local SQLite Database:
+1. Create an empty database with correct schema: `python manage.py migrate`
+2. Execute the script in [g_collection_mgmt](https://github.com/iptch/g_collection_mgmt)
+3. Connect to the SQLite DB and set yourself as admin in the `core_user` table.

@@ -10,6 +10,7 @@ from azure.storage.blob import (
 
 STORAGE_ACCOUNT = "gcollection"
 
+
 # Microsoft recommends the use of Azure AD credentials as a security best practice,
 # rather than using the account key, which can be more easily compromised.
 def request_user_delegation_key(blob_service_client: BlobServiceClient) -> UserDelegationKey:
@@ -30,13 +31,14 @@ def request_user_delegation_key(blob_service_client: BlobServiceClient) -> UserD
     # Cache the key for 23 hours (1 hour less than its validity).
     cache_duration = expiry_time - start_time - datetime.timedelta(hours=1)
     cache.set(cache_key, user_delegation_key, cache_duration.seconds)
-    
+
     return user_delegation_key
 
+
 def create_container_sas(
-    blob_service_client: BlobServiceClient,
-    user_delegation_key: UserDelegationKey,
-    container_name: str
+        blob_service_client: BlobServiceClient,
+        user_delegation_key: UserDelegationKey,
+        container_name: str
 ) -> str:
     cached_sas = cache.get(container_name)
     if cached_sas:
@@ -61,7 +63,9 @@ def create_container_sas(
 
     return container_sas
 
-def get_blob_sas_url(container_name: str, blob_name: str) -> str:
+
+def get_blob_sas_url(container_name: str, acronym: str) -> str:
+    blob_name = f'{acronym.lower()}.jpg'
     account_url = f"https://{STORAGE_ACCOUNT}.blob.core.windows.net"
     blob_service_client = BlobServiceClient(account_url, credential=DefaultAzureCredential())
     user_delegation_key = request_user_delegation_key(blob_service_client=blob_service_client)

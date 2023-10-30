@@ -9,12 +9,13 @@ class Card(models.Model):
 
     name = models.CharField(max_length=200)
     acronym = models.CharField(max_length=3)
-    team = models.CharField(max_length=200)
     job = models.CharField(max_length=200)
-    superpower = models.CharField(max_length=200)
-    highlight = models.CharField(max_length=200)
-    must_have = models.CharField(max_length=200)
-    image_link = models.CharField(max_length=200)
+    start_at_ipt = models.DateField()
+    email = models.CharField(max_length=200)
+    wish_destination = models.CharField(max_length=200, null=True)
+    wish_person = models.CharField(max_length=200, null=True)
+    wish_skill = models.CharField(max_length=200, null=True)
+    best_advice = models.CharField(max_length=200, null=True)
 
 
 class UserManager(models.Manager):
@@ -96,7 +97,7 @@ class OwnershipManager(models.Manager):
 
     def transfer_ownership(self, to_user, giver_ownership, card):
         """
-        Remove 1 card from give and give it to receiver.
+        Remove 1 card from giver and give it to receiver.
         """
         from_user = giver_ownership.user
 
@@ -115,7 +116,7 @@ class Ownership(models.Model):
     otp_value = models.CharField(null=True, max_length=16)
     otp_valid_to = models.DateTimeField(null=True)
     quantity = models.PositiveIntegerField(default=1)
-    last_received = models.DateTimeField(auto_now_add=True)
+    last_received = models.DateTimeField(auto_now=True)
     objects = OwnershipManager()
 
     def __str__(self):
