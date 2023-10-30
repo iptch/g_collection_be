@@ -12,10 +12,10 @@ class Card(models.Model):
     job = models.CharField(max_length=200)
     start_at_ipt = models.DateField()
     email = models.CharField(max_length=200)
-    wish_destination = models.CharField(max_length=200, null=True)
-    wish_person = models.CharField(max_length=200, null=True)
-    wish_skill = models.CharField(max_length=200, null=True)
-    best_advice = models.CharField(max_length=200, null=True)
+    wish_destination = models.CharField(max_length=2000, null=True)
+    wish_person = models.CharField(max_length=2000, null=True)
+    wish_skill = models.CharField(max_length=2000, null=True)
+    best_advice = models.CharField(max_length=2000, null=True)
 
 
 class UserManager(models.Manager):
