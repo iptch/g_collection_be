@@ -18,8 +18,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 class CardSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Card
-        # fields = ['id', 'name', 'acronym', 'team', 'job', 'superpower', 'highlight', 'must_have']
-        fields = ['id', 'name', 'acronym', 'job', 'start_at_ipt', 'wish_destination', 'wish_person',
+        fields = ['id', 'name', 'acronym', 'job', 'email', 'start_at_ipt', 'wish_destination', 'wish_person',
                   'wish_skill', 'best_advice']
 
     def to_representation(self, obj):
