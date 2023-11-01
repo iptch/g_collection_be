@@ -116,7 +116,7 @@ class Ownership(models.Model):
     otp_value = models.CharField(null=True, max_length=16)
     otp_valid_to = models.DateTimeField(null=True)
     quantity = models.PositiveIntegerField(default=1)
-    last_received = models.DateTimeField(auto_now=True)
+    last_received = models.DateTimeField(auto_now_add=True)
     objects = OwnershipManager()
 
     def __str__(self):
