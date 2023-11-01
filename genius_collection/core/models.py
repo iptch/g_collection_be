@@ -92,7 +92,7 @@ class OwnershipManager(models.Manager):
         """
         Gives the user [qty] new cards of himself.
         """
-        card = Card.objects.get(name=f'{user.first_name} {user.last_name}')
+        card = Card.objects.get(email=user.email)
         self.add_card_to_user(user=user, card=card, qty=qty)
 
     def transfer_ownership(self, to_user, giver_ownership, card):
