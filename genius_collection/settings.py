@@ -120,7 +120,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:4200',
-    'https://lemon-moss-0be637110.3.azurestaticapps.net'
+    'https://lemon-moss-0be637110.3.azurestaticapps.net',
+    'https://g-collection.ch',
+    'https://www.g-collection.ch'
 ]
 
 CACHES = {
