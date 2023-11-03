@@ -121,3 +121,13 @@ class Ownership(models.Model):
 
     def __str__(self):
         return f'{self.user} besitzt {self.quantity} {self.card}'
+
+
+class Distribution(models.Model):
+    def __str__(self):
+        return f'qty: {self.quantity} triggered_by: {self.user} timestamp: {self.timestamp}'
+
+    quantity = models.PositiveIntegerField(default=1)
+    user = models.ForeignKey(User, on_delete=models.RESTRICT)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    receiver = models.CharField(max_length=200, null=True)

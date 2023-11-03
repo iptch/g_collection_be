@@ -6,7 +6,8 @@ from rest_framework.views import APIView
 from genius_collection.core.serializers import UserSerializer, CardSerializer
 from django.db.models import Sum
 from django.db import connection
-from .models import Card, User, Ownership
+from django.core.exceptions import ObjectDoesNotExist
+from .models import Card, User, Ownership, Distribution
 from .jwt_validation import JWTAccessTokenAuthentication
 from genius_collection.core.blob_sas import get_blob_sas_url
 
@@ -129,6 +130,7 @@ class OverviewViewSet(APIView):
     def get(self, request):
         user_cards = User.objects.get(email=request.user['email']).cards.all()
         total_quantity = Ownership.objects.aggregate(total_quantity=Sum('quantity'))['total_quantity']
+
         rankings = [{
             'uniqueCardsCount': u.cards.count(),
             'displayName': str(u),
@@ -138,13 +140,20 @@ class OverviewViewSet(APIView):
         for i in range(len(rankings)):
             rankings[i]['rank'] = i + 1
 
+        try:
+            last_dist = Distribution.objects.latest('timestamp').timestamp
+        except ObjectDoesNotExist:
+            last_dist = None
+
+
         return Response({
             'myCardsCount': user_cards.count(),
             'totalCardQuantity': total_quantity,
             'myUniqueCardsCount': user_cards.distinct().count(),
             'allCardsCount': Card.objects.all().count(),
             'duplicateCardsCount': user_cards.count() - user_cards.distinct().count(),
-            'rankingList': rankings
+            'rankingList': rankings,
+            'lastDistribution': last_dist
         })
 
 
@@ -160,14 +169,19 @@ class DistributeViewSet(APIView):
         if not current_user.is_admin:
             return Response(status=status.HTTP_403_FORBIDDEN,
                             data={'status': f'Du bist kein Admin.'})
-        receivers = []
-        if request.data['receivers'] == 'all':
-            receivers = User.objects.all()
+        qty = int(request.data['quantity'])
+        receivers = request.data['receivers']
+        distribution = Distribution(quantity=qty, user=current_user, receiver=receivers)
+        distribution.save()
+
+        receiver_users = []
+        if receivers == 'all':
+            receiver_users = User.objects.all()
         else:
-            for r in request.data['receivers']:
-                receivers.append(User.objects.get(email=r))
-        for receiver in receivers:
-            Ownership.objects.distribute_random_cards(receiver, int(request.data['quantity']))
+            for r in receivers:
+                receiver_users.append(User.objects.get(email=r))
+        for receiver_user in receiver_users:
+            Ownership.objects.distribute_random_cards(receiver_user, qty)
 
         return Response(
-            {'status': f'{request.data["quantity"]} Karten erfolgreich verteilt.'})
+            {'status': f'{len(receiver_users)} * {qty} = {len(receiver_users) * qty} Karten erfolgreich verteilt.'})
