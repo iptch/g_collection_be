@@ -1,11 +1,12 @@
+import datetime
 import logging
 import re
+from django.core.cache import cache
 from django.http import HttpRequest
 import requests
 import jwt
 
 from .crypto import rsa_pem_from_jwk
-from .models import User
 
 from rest_framework import authentication
 from rest_framework import exceptions
@@ -88,6 +89,11 @@ class JWTAccessTokenAuthentication(authentication.BaseAuthentication):
 
     @staticmethod
     def get_jwk(kid, jwks_uri):
+        cached_jwk = cache.get(kid)
+        if cached_jwk:
+            return cached_jwk
+
+        # If the JWK for the given 'kid' is not found in the cache, fetch the JWKS
         resp = requests.get(jwks_uri)
         if not resp.ok:
             raise AzureVerifyTokenError(
@@ -100,6 +106,7 @@ class JWTAccessTokenAuthentication(authentication.BaseAuthentication):
                 f'Received malformed response from {jwks_uri}'
             )
         for jwk in jwks.get('keys'):
+            cache.set(jwk.get('kid'), jwk, datetime.timedelta(hours=1).seconds)
             if jwk.get('kid') == kid:
                 return jwk
         raise InvalidAuthorizationToken('kid not recognized')
