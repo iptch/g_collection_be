@@ -136,7 +136,7 @@ class OverviewViewSet(APIView):
             'displayName': str(u),
             'userEmail': u.email
         } for u in User.objects.all()]
-        rankings.sort(key=lambda r: r['uniqueCardsCount'], reverse=True)
+        rankings.sort(key=lambda r: (-r['uniqueCardsCount'], r['userEmail']))
         for i in range(len(rankings)):
             rankings[i]['rank'] = i + 1
 
