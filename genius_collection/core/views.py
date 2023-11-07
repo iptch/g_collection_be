@@ -97,6 +97,7 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     def transfer(self, request):
         giver = User.objects.get(email=request.data['giver'])
         card = Card.objects.get(id=request.data['id'])
+        current_user = User.objects.get(email=request.user['email'])
 
         try:
             ownership = Ownership.objects.get(user=giver, card=card)
@@ -112,7 +113,11 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data={
                                 'status': f'Das OTP ist nicht mehr gültig. Bitte den Sender, die Karte neu zu laden.'})
-        current_user = User.objects.get(email=request.user['email'])
+
+        if ownership.user == current_user:
+            return Response(status=status.HTTP_400_BAD_REQUEST,
+                            data={'status': f'Du kannst nicht mit dir selbst tauschen.'})
+
         giver_ownership, receiver_ownership = Ownership.objects.transfer_ownership(current_user, ownership, card)
         if giver_ownership is None:
             return Response({'status': f'Karte erfolgreich transferiert. {receiver_ownership}.'})
