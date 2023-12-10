@@ -25,6 +25,11 @@
 				"eamodio.gitlens"
 			]
 		}
+	},
+
+	// Set the Azure secret key environment variable in the container based on local environment variable.
+	"containerEnv": {
+		"SECRET_KEY": "${localEnv:G_COLLECTION_SECRET_KEY}"
 	}
 
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.

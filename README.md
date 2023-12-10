@@ -16,12 +16,12 @@ First time working with some of the tools mentioned above? Have a look at these 
 
 ## Running the app in a Dev Container
 
-1. Install and run [Docker](https://www.docker.com/products/docker-desktop/).
-2. Open this project in [VS Code](https://code.visualstudio.com/).
-3. Install the VS Code extension _Dev Containers_ (`Cmd+Shift+X` or `Ctrl+Shift+X`).
-4. Run _Dev Containers: Rebuild Container_ (`Cmd+Shift+P` or `Ctrl+Shift+P`).
-5. Run `export SECRET_KEY=...` to set the Azure secret key as environment variable.
-6. Add yourself to the Azure Subscription _iptch Sandbox_ (find instructions [here](https://app.happeo.com/pages/1e1oopl952ukqf9e0h/AzureampDu/1e5g766dso0ms8i9mp#wie-darf-ich-subscription-iptch-sandbox-nutzen)).
+1. Add yourself to the Azure Subscription _iptch Sandbox_ (find instructions [here](https://app.happeo.com/pages/1e1oopl952ukqf9e0h/AzureampDu/1e5g766dso0ms8i9mp#wie-darf-ich-subscription-iptch-sandbox-nutzen)).
+2. On your device, set the environment variable `G_COLLECTION_SECRET_KEY` to the Azure secret key (ask a friend).
+3. Install and run [Docker](https://www.docker.com/products/docker-desktop/).
+4. Open this project in [VS Code](https://code.visualstudio.com/).
+5. Install the VS Code extension _Dev Containers_ (`Cmd+Shift+X` or `Ctrl+Shift+X`).
+6. Run _Dev Containers: Rebuild Container_ (`Cmd+Shift+P` or `Ctrl+Shift+P`).
 7. Run `az login` to log into Azure using your ipt address (to access blob storage). If it doesn't work, try `az login --tenant iptzug.onmicrosoft.com`.
 8. Run `python manage.py migrate` to prepare the local DB.
 9. Run `python manage.py runserver` to start up the app.
