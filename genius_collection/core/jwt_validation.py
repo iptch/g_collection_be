@@ -106,7 +106,9 @@ class JWTAccessTokenAuthentication(authentication.BaseAuthentication):
                 f'Received malformed response from {jwks_uri}'
             )
         for jwk in jwks.get('keys'):
-            cache.set(jwk.get('kid'), jwk, datetime.timedelta(hours=1).seconds)
+            cache_duration = int(datetime.timedelta(days=1).total_seconds())
+            print(f"Caching JWK for KID '{jwk.get('kid')}' for {cache_duration} seconds")
+            cache.set(jwk.get('kid'), jwk, cache_duration)
             if jwk.get('kid') == kid:
                 return jwk
         raise InvalidAuthorizationToken('kid not recognized')
