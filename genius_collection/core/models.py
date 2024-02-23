@@ -134,3 +134,41 @@ class Distribution(models.Model):
     user = models.ForeignKey(User, on_delete=models.RESTRICT)
     timestamp = models.DateTimeField(auto_now_add=True)
     receiver = models.CharField(max_length=200, null=True)
+
+class QuizQuestion(models.Model):
+    def __str__(self):
+        return self.question
+    
+    class QuizQuestionType(models.TextChoices):
+        IMAGE = 'IMAGE', 'Image Choice'
+        TEXT = 'TEXT', 'Text Choice'
+
+    id = models.AutoField(primary_key=True)
+    question = models.CharField(max_length=2000)
+    answers = models.ManyToManyField('QuizAnswer')
+    correct_answer_id = models.IntegerField(null=True)
+    image_url = models.CharField(max_length=2000, null=True)
+    type = models.CharField(max_length=5, choices=QuizQuestionType.choices, default=QuizQuestionType.IMAGE)
+
+    def to_json(self):
+        data = {
+            'id': self.id,
+            'question': self.question,
+            'answers': [answer.to_json() for answer in self.answers.all()],
+            'image_url': self.image_url,
+            'type': self.type,
+        }
+        return data
+    
+class QuizAnswer(models.Model):
+    def __str__(self):
+        return self.answer
+    
+    id = models.AutoField(primary_key=True)
+    answer = models.CharField(max_length=2000)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'answer': self.answer,
+        }

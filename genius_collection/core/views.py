@@ -1,14 +1,23 @@
+import random
 from django.utils import timezone
 from rest_framework import status, viewsets, mixins
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
+<<<<<<< HEAD
 from genius_collection.core.serializers import UserSerializer, CardSerializer
 from django.core import serializers
 from django.db.models import Sum
 from django.db import connection, IntegrityError
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from .models import Card, User, Ownership, Distribution
+=======
+from genius_collection.core.serializers import QuizQuestionSerializer, UserSerializer, CardSerializer
+from django.db.models import Sum
+from django.db import connection
+from django.core.exceptions import ObjectDoesNotExist
+from .models import Card, QuizAnswer, QuizQuestion, User, Ownership, Distribution
+>>>>>>> 02656fb (WIP Quiz)
 from .jwt_validation import JWTAccessTokenAuthentication
 from genius_collection.core.blob_sas import get_blob_sas_url
 from django.http import HttpResponse
@@ -259,3 +268,55 @@ class UploadPictureViewSet(APIView):
 
         return HttpResponse()
 
+class QuizQuestionViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    API endpoint that allows quiz questions to be viewed and answered
+    """
+    authentication_classes = [JWTAccessTokenAuthentication]
+
+    @action(detail=False, methods=['get'], url_path='question',
+        description='Returns 4 random cards for the quiz.')
+    def init(self, request, pk=None):
+        cursor = connection.cursor()
+
+        query = f"""
+            SELECT id, name, acronym
+            FROM core_card cc 
+            ORDER BY RANDOM()
+            LIMIT 4;
+        """
+
+        cursor.execute(query)
+        card_dicts = self.dict_fetchall(cursor)
+        cards = [dict(c, **{'image_url': get_blob_sas_url('card-thumbnails', c['acronym'])}) for c in card_dicts]
+
+        # Select one random card from all answers
+        answerCard = random.choice(cards)
+
+        # Create new QuizQuestion object
+        question = QuizQuestion.objects.create()
+        question.question = "Wer ist das?"
+        question.image_url = answerCard["image_url"]
+
+        # Set the cards for the answers
+        for i in range(len(cards)):
+            question.answers.add(
+                QuizAnswer.objects.create(answer=cards[i]["name"])
+            )
+
+        # Loop through answers
+        for i in range(len(cards)):
+            if cards[i]["name"] == answerCard["name"]:
+                question.correct_answer_id = cards[i]["id"]
+        
+        question.correct_answer_id = 2
+        return Response(status=status.HTTP_200_OK, data=question.to_json())
+    
+    @staticmethod
+    def dict_fetchall(cursor):
+        """Return all rows from a cursor as a dict"""
+        columns = [col[0] for col in cursor.description]
+        return [
+            dict(zip(columns, row))
+            for row in cursor.fetchall()
+        ]
