@@ -166,3 +166,5 @@ staticfiles
 *.sqlite3
 
 /genius_collection/core/management/commands/create_dummy_data.py
+
+.DS_Store

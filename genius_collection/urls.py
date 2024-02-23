@@ -9,6 +9,7 @@ from genius_collection.core import views
 router = routers.DefaultRouter()
 router.register(r'users', views.UserViewSet)
 router.register(r'cards', views.CardViewSet)
+router.register(r'quiz', views.QuizQuestionViewSet, basename='quiz')
 
 schema_view = get_schema_view(
     openapi.Info(

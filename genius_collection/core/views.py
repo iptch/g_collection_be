@@ -1,14 +1,15 @@
+import random
 from django.utils import timezone
 from rest_framework import status, viewsets, mixins
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from genius_collection.core.serializers import UserSerializer, CardSerializer
-from django.core import serializers
 from django.db.models import Sum
 from django.db import connection, IntegrityError
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from .models import Card, User, Ownership, Distribution
+from .models import Card, QuizAnswer, QuizQuestion, User, Ownership, Distribution
 from .jwt_validation import JWTAccessTokenAuthentication
 from genius_collection.core.blob_sas import get_blob_sas_url
 from django.http import HttpResponse
@@ -260,6 +261,134 @@ class UploadPictureViewSet(APIView):
         # Upload file to Azure Blob Storage
         acronym = Card.objects.get(email=request.user['email']).acronym
         blob_client = container_client.get_blob_client(acronym.lower()+".jpg")
+        blob_client.upload_blob(file, overwrite=True)
+
+        return HttpResponse()
+
+class QuizQuestionViewSet(viewsets.GenericViewSet):
+    """
+    API endpoint that allows quiz questions to be viewed and answered
+    """
+    authentication_classes = [JWTAccessTokenAuthentication]
+
+    """
+    API endpoint that checks if the answer is correct.
+    """
+    @action(detail=False, methods=['post'], url_path='answer',
+            description='Checks if the answer is correct.')
+    def answer(self, request, pk=None):
+        question = QuizQuestion.objects.get(id=request.data['question'])
+        answer = QuizAnswer.objects.get(id=request.data['answer'])
+
+        answer_is_correct = (answer == question.correct_answer)
+
+        if(question.given_answer is not None):
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={
+                'status': 'Du hast diese Frage bereits beantwortet.'
+            })
+
+        question.given_answer = answer
+        question.answer_timestamp = timezone.now()
+        question.save()
+
+        # TODO Update score of the user
+
+        return Response(status=status.HTTP_200_OK, data={
+            'isCorrect': answer_is_correct, 
+            "correctAnswer": question.correct_answer.id
+        })
+
+    """
+        API endpoint that returns a question based on request
+    """
+    @action(detail=False, methods=['get'], url_path='question',
+        description='Returns 4 random cards for the quiz.')
+    def question(self, request, pk=None):
+        cursor = connection.cursor()
+
+        query = f"""
+            SELECT id, name, acronym
+            FROM core_card cc 
+            ORDER BY RANDOM()
+            LIMIT 4;
+        """
+
+        cursor.execute(query)
+        card_dicts = self.dict_fetchall(cursor)
+        cards = [dict(c, **{'image_url': get_blob_sas_url('card-thumbnails', c['acronym'])}) for c in card_dicts]
+
+        # Select one random card from all answers
+        answer_ID = random.randrange(len(cards))
+
+        # Read question and answer type from request
+        question_type = request.query_params.get('questionType', QuizQuestion.QuizQuestionType.IMAGE)
+        answer_type = request.query_params.get('answerType', QuizQuestion.QuizAnswerType.NAME)
+
+        # Create new QuizQuestion object
+        question = QuizQuestion.objects.create(
+            question = self.retrieve_question_string_from_type(answer_type),
+            user = User.objects.get(email=request.user['email']),
+            question_type = question_type,
+            answer_type = answer_type
+        )
+        
+        # Set the cards for the answers
+        for i in range(len(cards)):
+            answer = QuizAnswer.objects.create(
+                answer=self.retrieve_answer_string_from_type(question.answer_type, cards[i])
+            )
+            question.answers.add(answer)
+
+            if(i == answer_ID):
+                question.correct_answer = answer
+                question.image_url = cards[i]["image_url"]
+        
+        question.save()
+        
+        return Response(status=status.HTTP_200_OK, data=question.to_json())
+    
+    @staticmethod
+    def dict_fetchall(cursor):
+        """Return all rows from a cursor as a dict"""
+        columns = [col[0] for col in cursor.description]
+        return [
+            dict(zip(columns, row))
+            for row in cursor.fetchall()
+        ]
+    
+    def retrieve_question_string_from_type(self, answer_type):
+        match answer_type:
+            case QuizQuestion.QuizAnswerType.NAME:
+                return "Wer bin ich?"
+            case QuizQuestion.QuizAnswerType.ENTRY:
+                return "Seit wann bin ich dabei?"
+            case _:
+                return "ERROR: Unknown question type."
+            
+    def retrieve_answer_string_from_type(self, answer_type, answer):
+        match answer_type:
+            case QuizQuestion.QuizAnswerType.NAME:
+                return answer["name"]
+            case QuizQuestion.QuizAnswerType.ENTRY:
+                return answer["start_at_ipt"]
+            case _:
+                return "ERROR: Unknown answer type."
+
+"""
+API endpoint that uploads a picture for the current user.
+"""
+def upload_picture(request):
+    if request.method == 'POST':
+        # Authenticate with managed identity
+        credential = DefaultAzureCredential()
+
+        # Connect to Azure Blob Storage
+        blob_service_client = BlobServiceClient(account_url="https://gcollection.blob.core.windows.net", credential=credential)
+        container_client = blob_service_client.get_container_client("card-originals")
+
+        # Upload file to Azure Blob Storage
+        file = request.FILES['file']
+        blob_client = container_client.get_blob_client(file.name)
         blob_client.upload_blob(file, overwrite=True)
 
         return HttpResponse()

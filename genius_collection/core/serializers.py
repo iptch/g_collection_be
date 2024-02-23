@@ -8,12 +8,10 @@ from .models import Card, User, Ownership
 from genius_collection.core.blob_sas import get_blob_sas_url
 from django.db.models import QuerySet
 
-
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
         fields = ['email', 'first_name', 'last_name', 'is_admin']
-
 
 class CardSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
