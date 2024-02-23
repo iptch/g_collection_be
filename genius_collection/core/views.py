@@ -195,11 +195,16 @@ class DistributeViewSet(APIView):
         return Response(
             {'status': f'{len(receiver_users)} * {qty} = {len(receiver_users) * qty} Karten erfolgreich verteilt.'})
 
-"""
-API endpoint that uploads a picture for the current user.
-"""
-def upload_picture(request):
-    if request.method == 'POST':
+class UploadPictureViewSet(APIView):
+    """
+    API endpoint that uploads a picture for the current user.
+    """
+    authentication_classes = [JWTAccessTokenAuthentication]
+
+    @action(methods=['post'], detail=False, description='Uploads a picture for the current user to the Azure Blob Container .')
+    def post(self, request):
+        acronym = Card.objects.get(email=request.user['email']).acronym
+
         # Authenticate with managed identity
         credential = DefaultAzureCredential()
 
@@ -209,7 +214,7 @@ def upload_picture(request):
 
         # Upload file to Azure Blob Storage
         file = request.FILES['file']
-        blob_client = container_client.get_blob_client(file.name)
+        blob_client = container_client.get_blob_client(acronym.lower()+".jpg")
         blob_client.upload_blob(file, overwrite=True)
 
         return HttpResponse()
