@@ -276,7 +276,7 @@ class QuizQuestionViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, view
 
     @action(detail=False, methods=['get'], url_path='question',
         description='Returns 4 random cards for the quiz.')
-    def init(self, request, pk=None):
+    def question(self, request, pk=None):
         cursor = connection.cursor()
 
         query = f"""
@@ -291,25 +291,23 @@ class QuizQuestionViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, view
         cards = [dict(c, **{'image_url': get_blob_sas_url('card-thumbnails', c['acronym'])}) for c in card_dicts]
 
         # Select one random card from all answers
-        answerCard = random.choice(cards)
+        answer_ID = random.randrange(len(cards))
 
         # Create new QuizQuestion object
         question = QuizQuestion.objects.create()
         question.question = "Wer ist das?"
-        question.image_url = answerCard["image_url"]
-
+        
         # Set the cards for the answers
         for i in range(len(cards)):
-            question.answers.add(
-                QuizAnswer.objects.create(answer=cards[i]["name"])
-            )
+            answer = QuizAnswer.objects.create(answer=cards[i]["name"])
+            question.answers.add(answer)
 
-        # Loop through answers
-        for i in range(len(cards)):
-            if cards[i]["name"] == answerCard["name"]:
-                question.correct_answer_id = cards[i]["id"]
+            if(i == answer_ID):
+                question.correct_answer = answer
+                question.image_url = cards[i]["image_url"]
         
-        question.correct_answer_id = 2
+        question.save()
+        
         return Response(status=status.HTTP_200_OK, data=question.to_json())
     
     @staticmethod
