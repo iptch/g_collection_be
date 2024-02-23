@@ -243,7 +243,12 @@ class UploadPictureViewSet(APIView):
 
     @action(methods=['post'], detail=False, description='Uploads a picture for the current user to the Azure Blob Container .')
     def post(self, request):
-        acronym = Card.objects.get(email=request.user['email']).acronym
+        file = request.FILES['file']
+        if file.content_type != 'image/jpeg':
+            return Response({'status': 'Bild muss vom Typ JPEG sein'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if file.size > 10 * 1024 * 1024:  # 10MB in bytes
+            return Response({'status': 'Bild darf maximal 10MB gross sein.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Authenticate with managed identity
         credential = DefaultAzureCredential()
@@ -253,7 +258,7 @@ class UploadPictureViewSet(APIView):
         container_client = blob_service_client.get_container_client("card-originals")
 
         # Upload file to Azure Blob Storage
-        file = request.FILES['file']
+        acronym = Card.objects.get(email=request.user['email']).acronym
         blob_client = container_client.get_blob_client(acronym.lower()+".jpg")
         blob_client.upload_blob(file, overwrite=True)
 
