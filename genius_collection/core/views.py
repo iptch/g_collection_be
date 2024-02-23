@@ -134,7 +134,7 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             user_card = Card()
         
         # Update the fields of the user_card object with the data provided in the request
-        user_card.name = request.data.get('name', request.user['first_name'] + ' ' + request.user['last_name'])
+        user_card.name = request.data.get('name', f'{request.user['first_name']} {request.user['last_name']}')
         user_card.acronym = request.data.get('acronym', user_card.acronym)
         user_card.job = request.data.get('job', user_card.job)
         user_card.start_at_ipt = request.data.get('start_at_ipt', user_card.start_at_ipt)
