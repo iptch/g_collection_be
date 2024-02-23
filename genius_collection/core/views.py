@@ -5,8 +5,8 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 from genius_collection.core.serializers import UserSerializer, CardSerializer
 from django.db.models import Sum
-from django.db import connection
-from django.core.exceptions import ObjectDoesNotExist
+from django.db import connection, IntegrityError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from .models import Card, User, Ownership, Distribution
 from .jwt_validation import JWTAccessTokenAuthentication
 from genius_collection.core.blob_sas import get_blob_sas_url
@@ -31,7 +31,8 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
             return Response(
                 data={'status': f'User in Datenbank gefunden.',
                       'user': self.get_serializer(current_user).data,
-                      'last_login': last_login})
+                      'last_login': last_login,
+                      'user_card_exists': Card.objects.filter(email=current_user.email).exists()})
         except User.DoesNotExist:
             user, self_card_assigned = User.objects.create_user(first_name=request.user['first_name'],
                                                                 last_name=request.user['last_name'],
@@ -43,11 +44,10 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
                                   'last_login': None,
                                   'self_card_assigned': self_card_assigned})
 
-
 class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     # class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """
-    API endpoint that allows cards to be viewed or transferred.
+    API endpoint that allows cards to be viewed, modified or transferred.
     """
     authentication_classes = [JWTAccessTokenAuthentication]
     queryset = Card.objects.all()
@@ -124,6 +124,41 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         else:
             return Response({'status': f'Karte erfolgreich transferiert. {giver_ownership} und {receiver_ownership}.'})
 
+    @action(detail=False, methods=['post'], url_path='modify',
+            description='Modifies the card from the current user.')
+    def modify(self, request):        
+        # Retrieve the user_card object from the database
+        try:
+            user_card = Card.objects.get(email=request.user['email'])
+        except Card.DoesNotExist:
+            user_card = Card()
+        
+        # Update the fields of the user_card object with the data provided in the request
+        user_card.name = request.data.get('name', f'{request.user["first_name"]} {request.user["last_name"]}')
+        user_card.acronym = request.data.get('acronym', user_card.acronym)
+        user_card.job = request.data.get('job', user_card.job)
+        user_card.start_at_ipt = request.data.get('start_at_ipt', user_card.start_at_ipt)
+        user_card.email = request.data.get('email', request.user['email'])
+        user_card.wish_destination = request.data.get('wish_destination', user_card.wish_destination)
+        user_card.wish_person = request.data.get('wish_person', user_card.wish_person)
+        user_card.wish_skill = request.data.get('wish_skill', user_card.wish_skill)
+        user_card.best_advice = request.data.get('best_advice', user_card.best_advice)
+        
+        # Validate the updated user_card object
+        try:
+            user_card.full_clean()
+        except ValidationError as e:
+            return Response(status=status.HTTP_400_BAD_REQUEST,
+                            data={'status': 'Validation error', 'error': str(e)})
+        
+        # Save the updated user_card object back to the database
+        try:
+            user_card.save()
+        except IntegrityError as e:
+            return Response(status=status.HTTP_400_BAD_REQUEST,
+                            data={'status': 'Could not save the card.', 'error': str(e)})
+        
+        return Response({'status': 'Card updated successfully.'})
 
 class OverviewViewSet(APIView):
     """
