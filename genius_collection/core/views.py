@@ -274,7 +274,9 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
     """
     authentication_classes = [JWTAccessTokenAuthentication]
 
-    # Check if an answer is correct 
+    """
+    API endpoint that checks if the answer is correct.
+    """
     @action(detail=False, methods=['post'], url_path='answer',
             description='Checks if the answer is correct.')
     def answer(self, request, pk=None):
@@ -297,6 +299,9 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
             "correct_answer": question.correct_answer.id
         })
 
+    """
+        API endpoint that returns a question based on request
+    """
     @action(detail=False, methods=['get'], url_path='question',
         description='Returns 4 random cards for the quiz.')
     def question(self, request, pk=None):
@@ -318,7 +323,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
 
         # Create new QuizQuestion object
         question = QuizQuestion.objects.create(
-            question = "Wer ist das?",
+            question = "Wie heiße ich?",
             user = User.objects.get(email=request.user['email'])
         )
         

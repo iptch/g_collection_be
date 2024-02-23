@@ -140,8 +140,10 @@ class QuizQuestion(models.Model):
         return self.question
     
     class QuizQuestionType(models.TextChoices):
-        IMAGE = 'IMAGE', 'Image Choice'
-        TEXT = 'TEXT', 'Text Choice'
+        IMAGE = 'IMAGE', 'Image question'
+
+    class QuizAnswerType(models.TextChoices):
+        NAME = 'NAME', 'Name answer'
 
     id = models.AutoField(primary_key=True)
     question = models.CharField(max_length=2000)
@@ -150,7 +152,8 @@ class QuizQuestion(models.Model):
     answers = models.ManyToManyField('QuizAnswer')
     correct_answer = models.ForeignKey('QuizAnswer', on_delete=models.RESTRICT, related_name='correct_answer', null=True)
     image_url = models.CharField(max_length=2000, null=True)
-    type = models.CharField(max_length=5, choices=QuizQuestionType.choices, default=QuizQuestionType.IMAGE)
+    question_type = models.CharField(max_length=5, choices=QuizQuestionType.choices, default=QuizQuestionType.IMAGE)
+    answer_type = models.CharField(max_length=5, choices=QuizAnswerType.choices, default=QuizAnswerType.NAME)
     given_answer = models.ForeignKey('QuizAnswer', on_delete=models.RESTRICT, related_name='given_answer', null=True)
     answer_timestamp = models.DateTimeField(null=True)
 
@@ -160,8 +163,9 @@ class QuizQuestion(models.Model):
             'question': self.question,
             'answers': [answer.to_json() for answer in self.answers.all()],
             'image_url': self.image_url,
-            'type': self.type,
-            # Never return the correct answer
+            'question_type': self.question_type,
+            'answer_type': self.answer_type,
+            # Never return the correct answer in this request (prevent cheating)
         }
         return data
     
