@@ -4,20 +4,12 @@ from rest_framework import status, viewsets, mixins
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
-<<<<<<< HEAD
 from genius_collection.core.serializers import UserSerializer, CardSerializer
-from django.core import serializers
 from django.db.models import Sum
 from django.db import connection, IntegrityError
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from .models import Card, User, Ownership, Distribution
-=======
-from genius_collection.core.serializers import QuizQuestionSerializer, UserSerializer, CardSerializer
-from django.db.models import Sum
-from django.db import connection
-from django.core.exceptions import ObjectDoesNotExist
 from .models import Card, QuizAnswer, QuizQuestion, User, Ownership, Distribution
->>>>>>> 02656fb (WIP Quiz)
 from .jwt_validation import JWTAccessTokenAuthentication
 from genius_collection.core.blob_sas import get_blob_sas_url
 from django.http import HttpResponse
