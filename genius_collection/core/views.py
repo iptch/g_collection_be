@@ -274,6 +274,29 @@ class QuizQuestionViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, view
     """
     authentication_classes = [JWTAccessTokenAuthentication]
 
+    # Check if an answer is correct 
+    @action(detail=True, methods=['post'], url_path='answer',
+            description='Checks if the answer is correct.')
+    def answer(self, request, pk=None):
+        question = QuizQuestion.objects.get(id=request.data['question'])
+        answer = QuizAnswer.objects.get(id=request.data['answer'])
+
+        answer_is_correct = answer == question.correct_answer
+
+        if(question.given_answer is not None):
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={
+                'status': 'Du hast diese Frage bereits beantwortet.'
+            })
+
+        question.given_answer = answer
+        question.answer_timestamp = timezone.now()
+        question.save()
+
+        return Response(status=status.HTTP_200_OK, data={
+            'isCorrect': answer_is_correct, 
+            "correct_answer": question.correct_answer.id
+        })
+
     @action(detail=False, methods=['get'], url_path='question',
         description='Returns 4 random cards for the quiz.')
     def question(self, request, pk=None):
@@ -294,8 +317,10 @@ class QuizQuestionViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, view
         answer_ID = random.randrange(len(cards))
 
         # Create new QuizQuestion object
-        question = QuizQuestion.objects.create()
-        question.question = "Wer ist das?"
+        question = QuizQuestion.objects.create(
+            question = "Wer ist das?",
+            user = User.objects.get(email=request.user['email'])
+        )
         
         # Set the cards for the answers
         for i in range(len(cards)):

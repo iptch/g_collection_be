@@ -145,10 +145,14 @@ class QuizQuestion(models.Model):
 
     id = models.AutoField(primary_key=True)
     question = models.CharField(max_length=2000)
+    user = models.ForeignKey(User, on_delete=models.RESTRICT)
+    question_timestamp = models.DateTimeField(auto_now_add=True)
     answers = models.ManyToManyField('QuizAnswer')
     correct_answer = models.ForeignKey('QuizAnswer', on_delete=models.RESTRICT, related_name='correct_answer', null=True)
     image_url = models.CharField(max_length=2000, null=True)
     type = models.CharField(max_length=5, choices=QuizQuestionType.choices, default=QuizQuestionType.IMAGE)
+    given_answer = models.ForeignKey('QuizAnswer', on_delete=models.RESTRICT, related_name='given_answer', null=True)
+    answer_timestamp = models.DateTimeField(null=True)
 
     def to_json(self):
         data = {
@@ -157,6 +161,7 @@ class QuizQuestion(models.Model):
             'answers': [answer.to_json() for answer in self.answers.all()],
             'image_url': self.image_url,
             'type': self.type,
+            # Never return the correct answer
         }
         return data
     
