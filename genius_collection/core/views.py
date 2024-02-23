@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from genius_collection.core.serializers import UserSerializer, CardSerializer
+from django.core import serializers
 from django.db.models import Sum
 from django.db import connection, IntegrityError
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -32,20 +33,24 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
             last_login = current_user.last_login
             current_user.last_login = timezone.now()
             current_user.save()
+
+            user_card_id = Card.objects.get(email=current_user.email).pk
             return Response(
                 data={'status': f'User in Datenbank gefunden.',
                       'user': self.get_serializer(current_user).data,
-                      'last_login': last_login,
-                      'user_card_exists': Card.objects.filter(email=current_user.email).exists()})
+                      "card_id": user_card_id,
+                      'last_login': last_login})
         except User.DoesNotExist:
             user, self_card_assigned = User.objects.create_user(first_name=request.user['first_name'],
                                                                 last_name=request.user['last_name'],
                                                                 email=request.user['email'])
+            user_card_id = Card.objects.get(email=current_user.email).pk
 
             return Response(status=status.HTTP_201_CREATED,
                             data={'status': 'User erfolgreich erstellt.',
                                   'user': self.get_serializer(user).data,
                                   'last_login': None,
+                                  "card_id": user_card_id,
                                   'self_card_assigned': self_card_assigned})
 
 class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
