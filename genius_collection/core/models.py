@@ -144,6 +144,7 @@ class QuizQuestion(models.Model):
 
     class QuizAnswerType(models.TextChoices):
         NAME = 'NAME', 'Name answer'
+        ENTRY = 'ENTRY', 'Beitritt answer'
 
     id = models.AutoField(primary_key=True)
     question = models.CharField(max_length=2000)
@@ -162,9 +163,9 @@ class QuizQuestion(models.Model):
             'id': self.id,
             'question': self.question,
             'answers': [answer.to_json() for answer in self.answers.all()],
-            'image_url': self.image_url,
-            'question_type': self.question_type,
-            'answer_type': self.answer_type,
+            'imageUrl': self.image_url,
+            'questionType': self.question_type,
+            'answerType': self.answer_type,
             # Never return the correct answer in this request (prevent cheating)
         }
         return data

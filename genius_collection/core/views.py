@@ -283,7 +283,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         question = QuizQuestion.objects.get(id=request.data['question'])
         answer = QuizAnswer.objects.get(id=request.data['answer'])
 
-        answer_is_correct = answer == question.correct_answer
+        answer_is_correct = (answer == question.correct_answer)
 
         if(question.given_answer is not None):
             return Response(status=status.HTTP_400_BAD_REQUEST, data={
@@ -295,8 +295,8 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         question.save()
 
         return Response(status=status.HTTP_200_OK, data={
-            'is_correct': answer_is_correct, 
-            "correct_answer": question.correct_answer.id
+            'isCorrect': answer_is_correct, 
+            "correctAnswer": question.correct_answer.id
         })
 
     """
@@ -321,15 +321,23 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         # Select one random card from all answers
         answer_ID = random.randrange(len(cards))
 
+        # Read question and answer type from request
+        question_type = request.query_params.get('questionType', QuizQuestion.QuizQuestionType.IMAGE)
+        answer_type = request.query_params.get('answerType', QuizQuestion.QuizAnswerType.NAME)
+
         # Create new QuizQuestion object
         question = QuizQuestion.objects.create(
-            question = "Wie heiße ich?",
-            user = User.objects.get(email=request.user['email'])
+            question = self.retrieve_question_string_from_type(QuizQuestion.QuizQuestionType.IMAGE),
+            user = User.objects.get(email=request.user['email']),
+            question_type = question_type,
+            answer_type = answer_type
         )
         
         # Set the cards for the answers
         for i in range(len(cards)):
-            answer = QuizAnswer.objects.create(answer=cards[i]["name"])
+            answer = QuizAnswer.objects.create(
+                answer=self.retrieve_answer_string_from_type(question.answer_type, cards[i])
+            )
             question.answers.add(answer)
 
             if(i == answer_ID):
@@ -348,3 +356,41 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
             dict(zip(columns, row))
             for row in cursor.fetchall()
         ]
+    
+    def retrieve_question_string_from_type(self, answer_type):
+        match answer_type:
+            case QuizQuestion.QuizAnswerType.NAME:
+                return "Wer bin ich?"
+            case QuizQuestion.QuizAnswerType.ENTRY:
+                return "Seit wann bin ich dabei?"
+            case _:
+                return "ERROR: Unknown question type."
+            
+    def retrieve_answer_string_from_type(self, answer_type, answer):
+        match answer_type:
+            case QuizQuestion.QuizAnswerType.NAME:
+                return answer["name"]
+            case QuizQuestion.QuizAnswerType.ENTRY:
+                return answer["start_at_ipt"]
+            case _:
+                return "ERROR: Unknown answer type."
+
+"""
+API endpoint that uploads a picture for the current user.
+"""
+def upload_picture(request):
+    if request.method == 'POST':
+        # Authenticate with managed identity
+        credential = DefaultAzureCredential()
+
+        # Connect to Azure Blob Storage
+        blob_service_client = BlobServiceClient(account_url="https://gcollection.blob.core.windows.net", credential=credential)
+        container_client = blob_service_client.get_container_client("card-originals")
+
+        # Upload file to Azure Blob Storage
+        file = request.FILES['file']
+        blob_client = container_client.get_blob_client(file.name)
+        blob_client.upload_blob(file, overwrite=True)
+
+        return HttpResponse()
+
