@@ -294,6 +294,8 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         question.answer_timestamp = timezone.now()
         question.save()
 
+        # TODO Update score of the user
+
         return Response(status=status.HTTP_200_OK, data={
             'isCorrect': answer_is_correct, 
             "correctAnswer": question.correct_answer.id
