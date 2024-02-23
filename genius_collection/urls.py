@@ -4,6 +4,8 @@ from rest_framework import routers, permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from genius_collection.core import views
+from django.views.decorators.csrf import csrf_exempt
+
 
 router = routers.DefaultRouter()
 router.register(r'users', views.UserViewSet)
@@ -30,5 +32,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('overview/', views.OverviewViewSet.as_view()),
-    path('distribute/', views.DistributeViewSet.as_view())
+    path('distribute/', views.DistributeViewSet.as_view()),
+    path('upload-picture/', csrf_exempt(views.upload_picture), name='upload_picture')
 ]
