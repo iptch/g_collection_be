@@ -33,5 +33,5 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('overview/', views.OverviewViewSet.as_view()),
     path('distribute/', views.DistributeViewSet.as_view()),
-    path('upload-picture/', csrf_exempt(views.upload_picture), name='upload_picture')
+    path('upload-picture/', csrf_exempt(views.upload_picture))
 ]

@@ -195,13 +195,16 @@ class DistributeViewSet(APIView):
         return Response(
             {'status': f'{len(receiver_users)} * {qty} = {len(receiver_users) * qty} Karten erfolgreich verteilt.'})
 
+"""
+API endpoint that uploads a picture for the current user.
+"""
 def upload_picture(request):
     if request.method == 'POST':
         # Authenticate with managed identity
         credential = DefaultAzureCredential()
 
         # Connect to Azure Blob Storage
-        blob_service_client = BlobServiceClient(account_url=f"https://gcollection.blob.core.windows.net", credential=credential)
+        blob_service_client = BlobServiceClient(account_url="https://gcollection.blob.core.windows.net", credential=credential)
         container_client = blob_service_client.get_container_client("card-originals")
 
         # Upload file to Azure Blob Storage
@@ -209,5 +212,5 @@ def upload_picture(request):
         blob_client = container_client.get_blob_client(file.name)
         blob_client.upload_blob(file, overwrite=True)
 
-        return HttpResponse('File uploaded successfully to Azure Blob Storage!')
+        return HttpResponse()
 
