@@ -149,7 +149,7 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             user_card.full_clean()
         except ValidationError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST,
-                            data={'status': 'Validation error', 'errors': dict(e)})
+                            data={'status': 'Validation error', 'error': str(e)})
         
         # Save the updated user_card object back to the database
         try:
