@@ -41,6 +41,7 @@ class User(models.Model):
     cards = models.ManyToManyField(Card, through='Ownership')
     is_admin = models.BooleanField(default=False)
     last_login = models.DateTimeField(auto_now=True)
+    last_received_unique = models.DateTimeField(null=True)
     objects = UserManager()
 
 
@@ -55,6 +56,8 @@ class OwnershipManager(models.Manager):
 
         if created:
             ownership.quantity = qty
+            user.last_received_unique = timezone.now()
+            user.save()
         else:
             ownership.quantity += qty
             ownership.last_received = timezone.now()
