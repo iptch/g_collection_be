@@ -10,7 +10,11 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from .models import Card, User, Ownership, Distribution
 from .jwt_validation import JWTAccessTokenAuthentication
 from genius_collection.core.blob_sas import get_blob_sas_url
-
+from django.http import HttpResponse
+from azure.storage.blob import BlobServiceClient
+from django.http import HttpResponse
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
 
 class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """
@@ -226,3 +230,23 @@ class DistributeViewSet(APIView):
 
         return Response(
             {'status': f'{len(receiver_users)} * {qty} = {len(receiver_users) * qty} Karten erfolgreich verteilt.'})
+
+"""
+API endpoint that uploads a picture for the current user.
+"""
+def upload_picture(request):
+    if request.method == 'POST':
+        # Authenticate with managed identity
+        credential = DefaultAzureCredential()
+
+        # Connect to Azure Blob Storage
+        blob_service_client = BlobServiceClient(account_url="https://gcollection.blob.core.windows.net", credential=credential)
+        container_client = blob_service_client.get_container_client("card-originals")
+
+        # Upload file to Azure Blob Storage
+        file = request.FILES['file']
+        blob_client = container_client.get_blob_client(file.name)
+        blob_client.upload_blob(file, overwrite=True)
+
+        return HttpResponse()
+
