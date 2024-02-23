@@ -31,7 +31,8 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
             return Response(
                 data={'status': f'User in Datenbank gefunden.',
                       'user': self.get_serializer(current_user).data,
-                      'last_login': last_login})
+                      'last_login': last_login,
+                      'user_card_exists': UserViewSet.user_card_exists()})
         except User.DoesNotExist:
             user, self_card_assigned = User.objects.create_user(first_name=request.user['first_name'],
                                                                 last_name=request.user['last_name'],
@@ -42,7 +43,12 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
                                   'user': self.get_serializer(user).data,
                                   'last_login': None,
                                   'self_card_assigned': self_card_assigned})
-
+    
+    def user_card_exists(current_user):
+        # Check if Card for current_user exists
+        if Card.objects.exists(email=current_user.email):
+            return True
+        return False
 
 class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     # class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
