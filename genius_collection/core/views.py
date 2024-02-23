@@ -32,7 +32,7 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
                 data={'status': f'User in Datenbank gefunden.',
                       'user': self.get_serializer(current_user).data,
                       'last_login': last_login,
-                      'user_card_exists': Card.objects.exists(email=current_user.email)})
+                      'user_card_exists': Card.objects.filter(email=current_user.email).exists()})
         except User.DoesNotExist:
             user, self_card_assigned = User.objects.create_user(first_name=request.user['first_name'],
                                                                 last_name=request.user['last_name'],
