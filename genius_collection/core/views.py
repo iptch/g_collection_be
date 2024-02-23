@@ -205,10 +205,10 @@ class UploadPictureViewSet(APIView):
     def post(self, request):
         file = request.FILES['file']
         if file.content_type != 'image/jpeg':
-            return Response({'error': 'Bild muss vom Typ JPEG sein'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status': 'Bild muss vom Typ JPEG sein'}, status=status.HTTP_400_BAD_REQUEST)
         
         if file.size > 10 * 1024 * 1024:  # 10MB in bytes
-            return Response({'error': 'Bild darf maximal 10MB gross sein.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status': 'Bild darf maximal 10MB gross sein.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Authenticate with managed identity
         credential = DefaultAzureCredential()
