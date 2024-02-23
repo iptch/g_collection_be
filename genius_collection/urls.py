@@ -3,7 +3,6 @@ from django.contrib import admin
 from rest_framework import routers, permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
-from genius_collection.core import views
 
 
 router = routers.DefaultRouter()
