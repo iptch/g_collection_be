@@ -150,7 +150,6 @@ class OverviewViewSet(APIView):
         except ObjectDoesNotExist:
             last_dist = None
 
-
         return Response({
             'myCardsCount': user_cards.count(),
             'totalCardQuantity': total_quantity,
@@ -190,3 +189,37 @@ class DistributeViewSet(APIView):
 
         return Response(
             {'status': f'{len(receiver_users)} * {qty} = {len(receiver_users) * qty} Karten erfolgreich verteilt.'})
+
+
+class DeleteUserAndCard(APIView):
+    """
+    API endpoint that deletes a user, its connected card and all ownerships related to the card or user
+    """
+    authentication_classes = [JWTAccessTokenAuthentication]
+
+    @action(methods=['delete'], detail=False,
+            description='Deletes a user, its connected card and all ownerships related to the card or user')
+    def delete(self, request):
+        current_user = User.objects.get(email=request.user['email'])
+        if not current_user.is_admin:
+            return Response(status=status.HTTP_403_FORBIDDEN,
+                            data={'status': f'Du bist kein Admin.'})
+        user_to_delete_email = request.data['user_to_delete']
+
+        try:
+            user_to_delete = User.objects.get(email=user_to_delete_email)
+            Ownership.objects.filter(user=user_to_delete).delete()
+            user_to_delete.delete()
+            user_answer = 'User Objekt wurde in der Datenbank gefunden und gelöscht.'
+        except ObjectDoesNotExist:
+            user_answer = 'User Objekt wurde nicht gelöscht, da es in der Datenbank nicht gefunden wurde.'
+        try:
+            card_to_delete = Card.objects.get(email=user_to_delete_email)
+            Ownership.objects.filter(card=card_to_delete).delete()
+            card_to_delete.delete()
+            card_answer = 'Card Objekt wurde in der Datenbank gefunden und gelöscht.'
+        except ObjectDoesNotExist:
+            card_answer = 'Card Objekt wurde nicht gelöscht, da es in der Datenbank nicht gefunden wurde.'
+
+        return Response(
+            {'status': f'User-Email: [{user_to_delete_email}]. {user_answer} {card_answer}'})
