@@ -67,7 +67,7 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         # https://www.cdrf.co/3.9/rest_framework.viewsets/ReadOnlyModelViewSet.html#list
         cursor = connection.cursor()
 
-        query = f"""
+        query = """
             with co as (
             select
                 *
@@ -76,10 +76,9 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             join core_user cu on
                 co.user_id = cu.id
             where
-                cu.email = '{request.user['email']}')
+                cu.email = %s)
             select
-                coalesce(co.quantity,
-                0) as quantity,
+                coalesce(co.quantity, 0) as quantity,
                 co.last_received,
                 cc.*
             from
@@ -87,7 +86,7 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             left join co on
                 cc.id = co.card_id
         """
-        cursor.execute(query)
+        cursor.execute(query, [request.user['email']])
         card_dicts = self.dict_fetchall(cursor)
         cards = [dict(c, **{'image_url': get_blob_sas_url('card-thumbnails', c['acronym'])}) for c in card_dicts]
         return Response(cards)
