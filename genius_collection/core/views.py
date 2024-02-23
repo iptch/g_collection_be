@@ -268,14 +268,14 @@ class UploadPictureViewSet(APIView):
 
         return HttpResponse()
 
-class QuizQuestionViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
+class QuizQuestionViewSet(viewsets.GenericViewSet):
     """
     API endpoint that allows quiz questions to be viewed and answered
     """
     authentication_classes = [JWTAccessTokenAuthentication]
 
     # Check if an answer is correct 
-    @action(detail=True, methods=['post'], url_path='answer',
+    @action(detail=False, methods=['post'], url_path='answer',
             description='Checks if the answer is correct.')
     def answer(self, request, pk=None):
         question = QuizQuestion.objects.get(id=request.data['question'])
