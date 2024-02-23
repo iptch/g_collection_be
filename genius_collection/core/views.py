@@ -327,7 +327,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
 
         # Create new QuizQuestion object
         question = QuizQuestion.objects.create(
-            question = self.retrieve_question_string_from_type(QuizQuestion.QuizQuestionType.IMAGE),
+            question = self.retrieve_question_string_from_type(answer_type),
             user = User.objects.get(email=request.user['email']),
             question_type = question_type,
             answer_type = answer_type
