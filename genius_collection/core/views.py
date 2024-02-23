@@ -293,7 +293,7 @@ class QuizQuestionViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, view
         question.save()
 
         return Response(status=status.HTTP_200_OK, data={
-            'isCorrect': answer_is_correct, 
+            'is_correct': answer_is_correct, 
             "correct_answer": question.correct_answer.id
         })
 
