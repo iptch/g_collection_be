@@ -34,23 +34,23 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
             current_user.last_login = timezone.now()
             current_user.save()
 
-            user_card_id = Card.objects.get(email=current_user.email).pk
+            user_card = Card.objects.filter(email=current_user.email) 
+            
             return Response(
                 data={'status': f'User in Datenbank gefunden.',
                       'user': self.get_serializer(current_user).data,
-                      "card_id": user_card_id,
+                      "card_id": user_card.get().pk if user_card.exists() else None,
                       'last_login': last_login})
         except User.DoesNotExist:
             user, self_card_assigned = User.objects.create_user(first_name=request.user['first_name'],
                                                                 last_name=request.user['last_name'],
                                                                 email=request.user['email'])
-            user_card_id = Card.objects.get(email=current_user.email).pk
 
             return Response(status=status.HTTP_201_CREATED,
                             data={'status': 'User erfolgreich erstellt.',
                                   'user': self.get_serializer(user).data,
                                   'last_login': None,
-                                  "card_id": user_card_id,
+                                  "card_id": None,
                                   'self_card_assigned': self_card_assigned})
 
 class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
