@@ -98,7 +98,7 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         """
         cursor.execute(query, [request.user['email']])
         card_dicts = self.dict_fetchall(cursor)
-        cards = [dict(c, **{'image_url': get_blob_sas_url('card-thumbnails', c['acronym'])}) for c in card_dicts]
+        cards = [dict(c, **{'image_url': get_blob_sas_url('card-thumbnails', c['email'])}) for c in card_dicts]
         return Response(cards)
 
     @action(detail=False, methods=['post'], url_path='transfer',
@@ -236,13 +236,19 @@ class DistributeViewSet(APIView):
         return Response(
             {'status': f'{len(receiver_users)} * {qty} = {len(receiver_users) * qty} Karten erfolgreich verteilt.'})
 
-class UploadPictureViewSet(APIView):
+class PictureViewSet(APIView):
     """
     API endpoint that uploads a picture for the current user.
     """
     authentication_classes = [JWTAccessTokenAuthentication]
 
-    @action(methods=['post'], detail=False, description='Uploads a picture for the current user to the Azure Blob Container .')
+    @action(methods=['get'], detail=False, description='Gets the URL to the picture in original quality.')
+    def get(self, request):
+        email = request.user['email']
+        image_url = get_blob_sas_url('card-originals', email)
+        return Response(image_url)
+
+    @action(methods=['post'], detail=False, description='Uploads a picture for the current user to the Azure Blob Container.')
     def post(self, request):
         file = request.FILES['file']
         if file.content_type != 'image/jpeg':
@@ -259,11 +265,14 @@ class UploadPictureViewSet(APIView):
         container_client = blob_service_client.get_container_client("card-originals")
 
         # Upload file to Azure Blob Storage
-        acronym = Card.objects.get(email=request.user['email']).acronym
-        blob_client = container_client.get_blob_client(acronym.lower()+".jpg")
+        email = request.user['email']
+        blob_client = container_client.get_blob_client(f'{email}.jpg')
         blob_client.upload_blob(file, overwrite=True)
 
-        return HttpResponse()
+        # URL of the uploaded image
+        image_url = get_blob_sas_url('card-originals', email)
+
+        return Response(image_url)
 
 class QuizQuestionViewSet(viewsets.GenericViewSet):
     """
@@ -307,7 +316,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         cursor = connection.cursor()
 
         query = f"""
-            SELECT id, name, acronym
+            SELECT id, name, email
             FROM core_card cc 
             ORDER BY RANDOM()
             LIMIT 4;
@@ -315,7 +324,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
 
         cursor.execute(query)
         card_dicts = self.dict_fetchall(cursor)
-        cards = [dict(c, **{'image_url': get_blob_sas_url('card-thumbnails', c['acronym'])}) for c in card_dicts]
+        cards = [dict(c, **{'image_url': get_blob_sas_url('card-thumbnails', c['email'])}) for c in card_dicts]
 
         # Select one random card from all answers
         answer_ID = random.randrange(len(cards))
@@ -373,23 +382,3 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
                 return answer["start_at_ipt"]
             case _:
                 return "ERROR: Unknown answer type."
-
-"""
-API endpoint that uploads a picture for the current user.
-"""
-def upload_picture(request):
-    if request.method == 'POST':
-        # Authenticate with managed identity
-        credential = DefaultAzureCredential()
-
-        # Connect to Azure Blob Storage
-        blob_service_client = BlobServiceClient(account_url="https://gcollection.blob.core.windows.net", credential=credential)
-        container_client = blob_service_client.get_container_client("card-originals")
-
-        # Upload file to Azure Blob Storage
-        file = request.FILES['file']
-        blob_client = container_client.get_blob_client(file.name)
-        blob_client.upload_blob(file, overwrite=True)
-
-        return HttpResponse()
-
