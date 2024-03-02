@@ -12,9 +12,7 @@ from .models import Card, User, Ownership, Distribution
 from .models import Card, QuizAnswer, QuizQuestion, User, Ownership, Distribution
 from .jwt_validation import JWTAccessTokenAuthentication
 from genius_collection.core.blob_sas import get_blob_sas_url
-from django.http import HttpResponse
 from azure.storage.blob import BlobServiceClient
-from django.http import HttpResponse
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 
@@ -167,7 +165,7 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data={'status': 'Could not save the card.', 'error': str(e)})
         
-        return Response({'status': 'Card updated successfully.'})
+        return Response(CardSerializer(user_card, context={'request': request}).data)
 
 class OverviewViewSet(APIView):
     """
