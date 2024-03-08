@@ -12,3 +12,4 @@ PyJWT~=2.8.0
 azure-identity~=1.14.0
 azure-storage-blob~=12.17.0
 drf-yasg~=1.21.5
+pandas~=2.2.1

@@ -8,13 +8,17 @@ from genius_collection.core.serializers import UserSerializer, CardSerializer
 from django.db.models import Sum
 from django.db import connection, IntegrityError
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core import serializers
+from django.forms.models import model_to_dict
 from .models import Card, User, Ownership, Distribution
-from .models import Card, QuizAnswer, QuizQuestion, User, Ownership, Distribution
+from .models import Card, Quiz, User, Ownership, Distribution
 from .jwt_validation import JWTAccessTokenAuthentication
 from genius_collection.core.blob_sas import get_blob_sas_url
 from azure.storage.blob import BlobServiceClient
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
+import pandas as pd
+import json
 
 
 class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -145,7 +149,6 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             user_card = Card()
             is_initial_card_creation = True
 
-
         # Update the fields of the user_card object with the data provided in the request
         user_card.name = request.data.get('name', f'{request.user["first_name"]} {request.user["last_name"]}')
         user_card.acronym = request.data.get('acronym', user_card.acronym)
@@ -197,7 +200,7 @@ class OverviewViewSet(APIView):
             'last_received_unique': u.last_received_unique
         } for u in User.objects.all()]
         rankings.sort(key=lambda r: (
-        -r['uniqueCardsCount'], r['last_received_unique'] is None, r['last_received_unique'], r['userEmail']))
+            -r['uniqueCardsCount'], r['last_received_unique'] is None, r['last_received_unique'], r['userEmail']))
         for i in range(len(rankings)):
             rankings[i]['rank'] = i + 1
 
@@ -298,106 +301,148 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
     API endpoint that checks if the answer is correct.
     """
 
-    @action(detail=False, methods=['post'], url_path='answer',
-            description='Checks if the answer is correct.')
-    def answer(self, request, pk=None):
-        question = QuizQuestion.objects.get(id=request.data['question'])
-        answer = QuizAnswer.objects.get(id=request.data['answer'])
-
-        answer_is_correct = (answer == question.correct_answer)
-
-        if (question.given_answer is not None):
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={
-                'status': 'Du hast diese Frage bereits beantwortet.'
-            })
-
-        question.given_answer = answer
-        question.answer_timestamp = timezone.now()
-        question.save()
-
-        # TODO Update score of the user
-
-        return Response(status=status.HTTP_200_OK, data={
-            'isCorrect': answer_is_correct,
-            "correctAnswer": question.correct_answer.id
-        })
+    # @action(detail=False, methods=['post'], url_path='answer',
+    #         description='Checks if the answer is correct.')
+    # def answer(self, request, pk=None):
+    #     question = QuizQuestion.objects.get(id=request.data['question'])
+    #     answer = QuizAnswer.objects.get(id=request.data['answer'])
+    #
+    #     answer_is_correct = (answer == question.correct_answer)
+    #
+    #     if (question.given_answer is not None):
+    #         return Response(status=status.HTTP_400_BAD_REQUEST, data={
+    #             'status': 'Du hast diese Frage bereits beantwortet.'
+    #         })
+    #
+    #     question.given_answer = answer
+    #     question.answer_timestamp = timezone.now()
+    #     question.save()
+    #
+    #     # TODO Update score of the user
+    #
+    #     return Response(status=status.HTTP_200_OK, data={
+    #         'isCorrect': answer_is_correct,
+    #         "correctAnswer": question.correct_answer.id
+    #     })
 
     """
-        API endpoint that returns a question based on request
+    API endpoint that returns a question based on request
     """
 
-    @action(detail=False, methods=['get'], url_path='question',
+    @action(detail=False, methods=['post'], url_path='question',
             description='Returns 4 random cards for the quiz.')
     def question(self, request, pk=None):
-        cursor = connection.cursor()
+        # TODO filter that only people are selected, which filled out answers for the question/answers
+        # flow:
+        # 1. filter/where clause to check that answer and question type are both not null
+        # 2. make a groupby on the answer-column to get distinct values (preventing multiple times e.g. "Senior Consultant" as answer)
+        # 3. select a subset of n cards
+        answer_possibility_count = int(request.data.get('answer_possibilities', '4'))
+        question_type = request.data.get('question_type', 'IMAGE')
+        answer_type = request.data.get('answer_type', 'NAME')
 
+        cursor = connection.cursor()
         query = f"""
-            SELECT id, name, email
-            FROM core_card cc 
+            SELECT email
+            FROM core_card cc
+            WHERE  1=1 
+            AND %s IS NOT NULL
+            AND %s IS NULL
             ORDER BY RANDOM()
             LIMIT 4;
         """
 
-        cursor.execute(query)
-        card_dicts = self.dict_fetchall(cursor)
-        cards = [dict(c, **{'image_url': get_blob_sas_url('card-thumbnails', c['email'])}) for c in card_dicts]
+        cursor.execute(query, [str.lower(question_type), str.lower(answer_type)])
+        usable_card_emails = [i[0] for i in cursor.fetchall()]
+        # usable_cards = Card.objects
+        # if Quiz.QuizType.WISH_DESTINATION in [question_type, answer_type]:
+        #     usable_cards = usable_cards.exclude(wish_destination='')
+        # if Quiz.QuizType.WISH_PERSON in [question_type, answer_type]:
+        #     usable_cards = usable_cards.exclude(wish_person__isnull='')
+        # if Quiz.QuizType.WISH_SKILL in [question_type, answer_type]:
+        #     usable_cards = usable_cards.exclude(wish_skill='')
+        # if Quiz.QuizType.BEST_ADVICE in [question_type, answer_type]:
+        #     usable_cards = usable_cards.exclude(best_advice='')
+        #
+        # answer_possibility_cards = usable_cards.order_by('?')[0:answer_possibility_count]
+        answer_possibility_cards = Card.objects.filter(email__in=usable_card_emails)
+        # answer_possibility_cards = Card.objects.filter(answer_card__id__in=usable_card_ids).order_by('?')[0:answer_possibility_count]
+        answer_possibility_cards = Card.objects
 
-        # Select one random card from all answers
-        answer_ID = random.randrange(len(cards))
+        answer_id = random.randrange(len([answer_possibility_cards]))
+        question_true_card = answer_possibility_cards[answer_id]
+        if question_type == Quiz.QuizType.IMAGE:
+            input_value = None
+            image_url = get_blob_sas_url('card-thumbnails', question_true_card.email)
+        else:
+            image_url = None
+            input_value = getattr(question_true_card, str.lower(question_type))
 
-        # Read question and answer type from request
-        question_type = request.query_params.get('questionType', QuizQuestion.QuizQuestionType.IMAGE)
-        answer_type = request.query_params.get('answerType', QuizQuestion.QuizAnswerType.NAME)
-
-        # Create new QuizQuestion object
-        question = QuizQuestion.objects.create(
-            question=self.retrieve_question_string_from_type(answer_type),
+        if answer_type == Quiz.QuizType.IMAGE:
+            answer_possibilities = [{'card_id': c.id, 'answer_value': c.name} for c in
+                                    list(answer_possibility_cards)]
+        else:
+            answer_possibilities = [{'card_id': c.id, 'answer_value': getattr(c, str.lower(answer_type))} for c in
+                                    list(answer_possibility_cards)]
+        quiz = Quiz.objects.create(
             user=User.objects.get(email=request.user['email']),
             question_type=question_type,
-            answer_type=answer_type
+            answer_type=answer_type,
+            question_true_card=question_true_card
         )
-
-        # Set the cards for the answers
-        for i in range(len(cards)):
-            answer = QuizAnswer.objects.create(
-                answer=self.retrieve_answer_string_from_type(question.answer_type, cards[i])
-            )
-            question.answers.add(answer)
-
-            if (i == answer_ID):
-                question.correct_answer = answer
-                question.image_url = cards[i]["image_url"]
-
-        question.save()
-
-        return Response(status=status.HTTP_200_OK, data=question.to_json())
+        quiz.save()
+        try:
+            question_answer_tuple = {
+                'question_type': question_type,
+                'image_url': image_url,
+                'answer_type': answer_type,
+                'answer_possibilities': answer_possibilities,
+                'question_string': self.get_question_string(question_type, answer_type, input_value)
+            }
+            return Response(status=status.HTTP_201_CREATED, data=question_answer_tuple)
+        except KeyError as e:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data=str(e))
 
     @staticmethod
-    def dict_fetchall(cursor):
-        """Return all rows from a cursor as a dict"""
-        columns = [col[0] for col in cursor.description]
-        return [
-            dict(zip(columns, row))
-            for row in cursor.fetchall()
-        ]
+    def get_question_string(question_type, answer_type, input_value):
+        mapping = {
+            Quiz.QuizType.IMAGE: {
+                Quiz.QuizType.NAME: 'Wen siehst du auf diesem Bild?',
+                Quiz.QuizType.JOB: 'Welche Position hat die Person im Bild?',
+                Quiz.QuizType.ACRONYM: 'Was ist das Kürzel dieser Person?',
+                Quiz.QuizType.START_AT_IPT: 'Wann hat diese Person in der ipt angefangen?',
+                Quiz.QuizType.WISH_DESTINATION: 'Wo wollte diese Person schon immer mal hin?',
+                Quiz.QuizType.WISH_PERSON: 'Mit wem wollte diese Person schon immer mal tauschen?',
+                Quiz.QuizType.WISH_SKILL: 'Was wollte diese Person schon immer einmal lernen?',
+                Quiz.QuizType.BEST_ADVICE: 'Was ist der beste berufliche Ratschlag von dieser Person?'
+            },
+            Quiz.QuizType.NAME: {
+                Quiz.QuizType.IMAGE: f'Welches Bild zeigt {input_value}?',
+                Quiz.QuizType.JOB: f'Welche Position hat {input_value} inne?',
+                Quiz.QuizType.START_AT_IPT: f'Wann hat {input_value} in der ipt angefangen?',
+                Quiz.QuizType.WISH_DESTINATION: f'Wo wollte {input_value} schon immer mal hin?',
+                Quiz.QuizType.WISH_PERSON: f'Mit wem wollte {input_value} schon immer mal tauschen?',
+                Quiz.QuizType.WISH_SKILL: f'Was wollte {input_value} schon immer einmal lernen?',
+                Quiz.QuizType.BEST_ADVICE: f'Was ist der beste berufliche Ratschlag von {input_value}?'
+            },
+            Quiz.QuizType.WISH_DESTINATION: {
+                Quiz.QuizType.NAME: f'Da würde ich am liebsten hinreisen: "{input_value}". Wer hat das gesagt?'
+            },
+            Quiz.QuizType.WISH_PERSON: {
+                Quiz.QuizType.NAME: f'Am liebsten tauschen würde ich mit: "{input_value}". Wer hat das gesagt?'
+            },
+            Quiz.QuizType.WISH_SKILL: {
+                Quiz.QuizType.NAME: f'Das wollte ich schon immer mal erlernen: "{input_value}". Wer hat das gesagt?'
+            },
+            Quiz.QuizType.BEST_ADVICE: {
+                Quiz.QuizType.NAME: f'Der beste Ratschlag ist: "{input_value}". Wer hat das gesagt?'
+            }
+        }
 
-    def retrieve_question_string_from_type(self, answer_type):
-        match answer_type:
-            case QuizQuestion.QuizAnswerType.NAME:
-                return "Wer bin ich?"
-            case QuizQuestion.QuizAnswerType.ENTRY:
-                return "Seit wann bin ich dabei?"
-            case _:
-                return "ERROR: Unknown question type."
-
-    def retrieve_answer_string_from_type(self, answer_type, answer):
-        match answer_type:
-            case QuizQuestion.QuizAnswerType.NAME:
-                return answer["name"]
-            case QuizQuestion.QuizAnswerType.ENTRY:
-                return answer["start_at_ipt"]
-            case _:
-                return "ERROR: Unknown answer type."
+        try:
+            return mapping[question_type][answer_type]
+        except KeyError:
+            raise KeyError(f'Combination of Question/Answer not allowed: ({question_type}/{answer_type})')
 
 
 class DeleteUserAndCard(APIView):
