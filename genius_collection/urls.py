@@ -5,9 +5,11 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from genius_collection.core import views
 
+
 router = routers.DefaultRouter()
 router.register(r'users', views.UserViewSet)
 router.register(r'cards', views.CardViewSet)
+router.register(r'quiz', views.QuizQuestionViewSet, basename='quiz')
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -30,6 +32,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('overview/', views.OverviewViewSet.as_view()),
+    path('distribute/', views.DistributeViewSet.as_view()),
     path('delete-user-and-card/', views.DeleteUserAndCard.as_view()),
-    path('distribute/', views.DistributeViewSet.as_view())
+    path('picture/', views.PictureViewSet.as_view())
 ]
