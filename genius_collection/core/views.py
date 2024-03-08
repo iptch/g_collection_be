@@ -428,8 +428,7 @@ class DeleteUserAndCard(APIView):
                                                     credential=credential)
             container_client = blob_service_client.get_container_client("card-originals")
             # Upload file to Azure Blob Storage
-            email = request.user['email']
-            container_client.delete_blob(f'{email}.jpg')
+            container_client.delete_blob(f'{user_to_delete_email}.jpg')
             image_answer = 'Card Image wurde im Storage Container gefunden und gelöscht.'
         except azure.core.exceptions.ResourceNotFoundError:
             image_answer = 'Card Image wurde nicht gelöscht, da es im Storage Container nicht gefunden wurde.'
