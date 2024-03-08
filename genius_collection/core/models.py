@@ -135,10 +135,11 @@ class Distribution(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     receiver = models.CharField(max_length=200, null=True)
 
+
 class QuizQuestion(models.Model):
     def __str__(self):
         return self.question
-    
+
     class QuizQuestionType(models.TextChoices):
         IMAGE = 'IMAGE', 'Image question'
 
@@ -151,7 +152,8 @@ class QuizQuestion(models.Model):
     user = models.ForeignKey(User, on_delete=models.RESTRICT)
     question_timestamp = models.DateTimeField(auto_now_add=True)
     answers = models.ManyToManyField('QuizAnswer')
-    correct_answer = models.ForeignKey('QuizAnswer', on_delete=models.RESTRICT, related_name='correct_answer', null=True)
+    correct_answer = models.ForeignKey('QuizAnswer', on_delete=models.RESTRICT, related_name='correct_answer',
+                                       null=True)
     image_url = models.CharField(max_length=2000, null=True)
     question_type = models.CharField(max_length=5, choices=QuizQuestionType.choices, default=QuizQuestionType.IMAGE)
     answer_type = models.CharField(max_length=5, choices=QuizAnswerType.choices, default=QuizAnswerType.NAME)
@@ -169,11 +171,12 @@ class QuizQuestion(models.Model):
             # Never return the correct answer in this request (prevent cheating)
         }
         return data
-    
+
+
 class QuizAnswer(models.Model):
     def __str__(self):
         return self.answer
-    
+
     id = models.AutoField(primary_key=True)
     answer = models.CharField(max_length=2000)
 

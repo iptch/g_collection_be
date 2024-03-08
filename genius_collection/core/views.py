@@ -34,8 +34,8 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
             current_user.last_login = timezone.now()
             current_user.save()
 
-            user_card = Card.objects.filter(email=current_user.email) 
-            
+            user_card = Card.objects.filter(email=current_user.email)
+
             return Response(
                 data={'status': f'User in Datenbank gefunden.',
                       'user': self.get_serializer(current_user).data,
@@ -170,6 +170,7 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         except IntegrityError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data={'status': 'Could not save the card.', 'error': str(e)})
+
         if is_initial_card_creation:
             # give the user x times his own card
             current_user = User.objects.get(email=request.user['email'])
@@ -397,3 +398,50 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
                 return answer["start_at_ipt"]
             case _:
                 return "ERROR: Unknown answer type."
+
+
+class DeleteUserAndCard(APIView):
+    """
+    API endpoint that deletes a user, its connected card and all ownerships related to the card or user
+    """
+    authentication_classes = [JWTAccessTokenAuthentication]
+
+    @action(methods=['delete'], detail=False,
+            description='Deletes a user, its connected card and all ownerships related to the card or user')
+    def delete(self, request):
+        current_user = User.objects.get(email=request.user['email'])
+        if not current_user.is_admin:
+            return Response(status=status.HTTP_403_FORBIDDEN,
+                            data={'status': f'Du bist kein Admin.'})
+        user_to_delete_email = request.data['user_to_delete']
+
+        try:
+            user_to_delete = User.objects.get(email=user_to_delete_email)
+            Ownership.objects.filter(user=user_to_delete).delete()
+            user_to_delete.delete()
+            user_answer = 'User Objekt wurde in der Datenbank gefunden und gelöscht.'
+        except ObjectDoesNotExist:
+            user_answer = 'User Objekt wurde nicht gelöscht, da es in der Datenbank nicht gefunden wurde.'
+        try:
+            card_to_delete = Card.objects.get(email=user_to_delete_email)
+            Ownership.objects.filter(card=card_to_delete).delete()
+            card_to_delete.delete()
+            card_answer = 'Card Objekt wurde in der Datenbank gefunden und gelöscht.'
+        except ObjectDoesNotExist:
+            card_answer = 'Card Objekt wurde nicht gelöscht, da es in der Datenbank nicht gefunden wurde.'
+
+        try:
+            # Authenticate with managed identity
+            credential = DefaultAzureCredential()
+            # Connect to Azure Blob Storage
+            blob_service_client = BlobServiceClient(account_url="https://gcollection.blob.core.windows.net",
+                                                    credential=credential)
+            container_client = blob_service_client.get_container_client("card-originals")
+            # Upload file to Azure Blob Storage
+            container_client.delete_blob(f'{user_to_delete_email}.jpg')
+            image_answer = 'Card Image wurde im Storage Container gefunden und gelöscht.'
+        except azure.core.exceptions.ResourceNotFoundError:
+            image_answer = 'Card Image wurde nicht gelöscht, da es im Storage Container nicht gefunden wurde.'
+
+        return Response(
+            {'status': f'User-Email: [{user_to_delete_email}]. {user_answer} {card_answer} {image_answer}'})
