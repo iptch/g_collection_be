@@ -15,6 +15,7 @@ from genius_collection.core.blob_sas import get_blob_sas_url
 from azure.storage.blob import BlobServiceClient
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
+from azure.core.exceptions import ResourceNotFoundError
 
 
 class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -440,7 +441,7 @@ class DeleteUserAndCard(APIView):
             # Upload file to Azure Blob Storage
             container_client.delete_blob(f'{user_to_delete_email}.jpg')
             image_answer = 'Card Image wurde im Storage Container gefunden und gelöscht.'
-        except azure.core.exceptions.ResourceNotFoundError:
+        except ResourceNotFoundError:
             image_answer = 'Card Image wurde nicht gelöscht, da es im Storage Container nicht gefunden wurde.'
 
         return Response(
