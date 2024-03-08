@@ -22,7 +22,7 @@ class CardSerializer(serializers.HyperlinkedModelSerializer):
     def to_representation(self, obj):
         data = super().to_representation(obj)
 
-        data['image_url'] = get_blob_sas_url("card-detail-views", obj.acronym)
+        data['image_url'] = get_blob_sas_url("card-detail-views", obj.email)
 
         current_user = User.objects.get(email=self.context['request'].user['email'])
         ownership = Ownership.objects.filter(card=obj, user=current_user).first()

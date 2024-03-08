@@ -68,8 +68,8 @@ def create_container_sas(
     return container_sas
 
 
-def get_blob_sas_url(container_name: str, acronym: str) -> str:
-    blob_name = f'{acronym.lower()}.jpg'
+def get_blob_sas_url(container_name: str, image_name: str) -> str:
+    blob_name = f'{image_name.lower()}.jpg'
     user_delegation_key = request_user_delegation_key()
     sas_token = create_container_sas(user_delegation_key, container_name)
     return f"{HOST}/{container_name}/{blob_name}?{sas_token}"
