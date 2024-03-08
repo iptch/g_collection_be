@@ -1,4 +1,4 @@
-import azure.core.exceptions
+import random
 from django.utils import timezone
 from rest_framework import status, viewsets, mixins
 from rest_framework.response import Response
@@ -8,6 +8,7 @@ from genius_collection.core.serializers import UserSerializer, CardSerializer
 from django.db.models import Sum
 from django.db import connection, IntegrityError
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from .models import Card, User, Ownership, Distribution
 from .models import Card, QuizAnswer, QuizQuestion, User, Ownership, Distribution
 from .jwt_validation import JWTAccessTokenAuthentication
 from genius_collection.core.blob_sas import get_blob_sas_url
@@ -136,10 +137,14 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             description='Modifies the card from the current user.')
     def modify(self, request):
         # Retrieve the user_card object from the database
+
         try:
             user_card = Card.objects.get(email=request.user['email'])
+            is_initial_card_creation = False
         except Card.DoesNotExist:
             user_card = Card()
+            is_initial_card_creation = True
+
 
         # Update the fields of the user_card object with the data provided in the request
         user_card.name = request.data.get('name', f'{request.user["first_name"]} {request.user["last_name"]}')
@@ -165,6 +170,11 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         except IntegrityError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data={'status': 'Could not save the card.', 'error': str(e)})
+
+        if is_initial_card_creation:
+            # give the user x times his own card
+            current_user = User.objects.get(email=request.user['email'])
+            Ownership.objects.distribute_self_cards_to_user(current_user, 20)
 
         return Response(CardSerializer(user_card, context={'request': request}).data)
 

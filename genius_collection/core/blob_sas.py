@@ -1,4 +1,5 @@
 import datetime
+import time
 from django.core.cache import cache
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import (
@@ -72,4 +73,5 @@ def get_blob_sas_url(container_name: str, image_name: str) -> str:
     blob_name = f'{image_name.lower()}.jpg'
     user_delegation_key = request_user_delegation_key()
     sas_token = create_container_sas(user_delegation_key, container_name)
-    return f"{HOST}/{container_name}/{blob_name}?{sas_token}"
+    # Add timestamp to URL so that the browser reloads the image
+    return f"{HOST}/{container_name}/{blob_name}?{sas_token}&timestamp={time.time()}"
