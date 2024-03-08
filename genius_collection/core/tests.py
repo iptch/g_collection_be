@@ -2,6 +2,7 @@ from genius_collection.core.models import User, Card, Ownership
 from django.test import TestCase
 from django.db.models import Sum
 
+
 # Create your tests here.
 def test_assign_ownership():
     num_samples = 5
@@ -13,5 +14,6 @@ def test_assign_ownership():
     manager.distribute_random_cards(user, qty=num_samples)
     ownerships_after = Ownership.objects.aggregate(Sum("quantity"))['quantity__sum']
     assert num_samples == (ownerships_after - ownerships_before)
+
 
 test_assign_ownership()
