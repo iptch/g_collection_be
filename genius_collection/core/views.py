@@ -16,6 +16,7 @@ from azure.storage.blob import BlobServiceClient
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 
+
 class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     API endpoint that allows users to be viewed or initialized.
@@ -51,6 +52,7 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
                                   'last_login': None,
                                   "card_id": None,
                                   'self_card_assigned': self_card_assigned})
+
 
 class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     # class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -133,13 +135,17 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
 
     @action(detail=False, methods=['post'], url_path='modify',
             description='Modifies the card from the current user.')
-    def modify(self, request):        
+    def modify(self, request):
         # Retrieve the user_card object from the database
+
         try:
             user_card = Card.objects.get(email=request.user['email'])
+            is_initial_card_creation = False
         except Card.DoesNotExist:
             user_card = Card()
-        
+            is_initial_card_creation = True
+
+
         # Update the fields of the user_card object with the data provided in the request
         user_card.name = request.data.get('name', f'{request.user["first_name"]} {request.user["last_name"]}')
         user_card.acronym = request.data.get('acronym', user_card.acronym)
@@ -150,22 +156,27 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         user_card.wish_person = request.data.get('wish_person', user_card.wish_person)
         user_card.wish_skill = request.data.get('wish_skill', user_card.wish_skill)
         user_card.best_advice = request.data.get('best_advice', user_card.best_advice)
-        
+
         # Validate the updated user_card object
         try:
             user_card.full_clean()
         except ValidationError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data={'status': 'Validation error', 'error': str(e)})
-        
+
         # Save the updated user_card object back to the database
         try:
             user_card.save()
         except IntegrityError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data={'status': 'Could not save the card.', 'error': str(e)})
-        
+        if is_initial_card_creation:
+            # give the user x times his own card
+            current_user = User.objects.get(email=request.user['email'])
+            Ownership.objects.distribute_self_cards_to_user(current_user, 20)
+
         return Response(CardSerializer(user_card, context={'request': request}).data)
+
 
 class OverviewViewSet(APIView):
     """
@@ -184,7 +195,8 @@ class OverviewViewSet(APIView):
             'userEmail': u.email,
             'last_received_unique': u.last_received_unique
         } for u in User.objects.all()]
-        rankings.sort(key=lambda r: (-r['uniqueCardsCount'], r['last_received_unique'] is None, r['last_received_unique'], r['userEmail']))
+        rankings.sort(key=lambda r: (
+        -r['uniqueCardsCount'], r['last_received_unique'] is None, r['last_received_unique'], r['userEmail']))
         for i in range(len(rankings)):
             rankings[i]['rank'] = i + 1
 
@@ -192,7 +204,6 @@ class OverviewViewSet(APIView):
             last_dist = Distribution.objects.latest('timestamp').timestamp
         except ObjectDoesNotExist:
             last_dist = None
-
 
         return Response({
             'myCardsCount': user_cards.count(),
@@ -234,6 +245,7 @@ class DistributeViewSet(APIView):
         return Response(
             {'status': f'{len(receiver_users)} * {qty} = {len(receiver_users) * qty} Karten erfolgreich verteilt.'})
 
+
 class PictureViewSet(APIView):
     """
     API endpoint that uploads a picture for the current user.
@@ -246,12 +258,13 @@ class PictureViewSet(APIView):
         image_url = get_blob_sas_url('card-originals', email)
         return Response(image_url)
 
-    @action(methods=['post'], detail=False, description='Uploads a picture for the current user to the Azure Blob Container.')
+    @action(methods=['post'], detail=False,
+            description='Uploads a picture for the current user to the Azure Blob Container.')
     def post(self, request):
         file = request.FILES['file']
         if file.content_type != 'image/jpeg':
             return Response({'status': 'Bild muss vom Typ JPEG sein'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         if file.size > 10 * 1024 * 1024:  # 10MB in bytes
             return Response({'status': 'Bild darf maximal 10MB gross sein.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -259,7 +272,8 @@ class PictureViewSet(APIView):
         credential = DefaultAzureCredential()
 
         # Connect to Azure Blob Storage
-        blob_service_client = BlobServiceClient(account_url="https://gcollection.blob.core.windows.net", credential=credential)
+        blob_service_client = BlobServiceClient(account_url="https://gcollection.blob.core.windows.net",
+                                                credential=credential)
         container_client = blob_service_client.get_container_client("card-originals")
 
         # Upload file to Azure Blob Storage
@@ -272,6 +286,7 @@ class PictureViewSet(APIView):
 
         return Response(image_url)
 
+
 class QuizQuestionViewSet(viewsets.GenericViewSet):
     """
     API endpoint that allows quiz questions to be viewed and answered
@@ -281,6 +296,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
     """
     API endpoint that checks if the answer is correct.
     """
+
     @action(detail=False, methods=['post'], url_path='answer',
             description='Checks if the answer is correct.')
     def answer(self, request, pk=None):
@@ -289,7 +305,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
 
         answer_is_correct = (answer == question.correct_answer)
 
-        if(question.given_answer is not None):
+        if (question.given_answer is not None):
             return Response(status=status.HTTP_400_BAD_REQUEST, data={
                 'status': 'Du hast diese Frage bereits beantwortet.'
             })
@@ -301,15 +317,16 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         # TODO Update score of the user
 
         return Response(status=status.HTTP_200_OK, data={
-            'isCorrect': answer_is_correct, 
+            'isCorrect': answer_is_correct,
             "correctAnswer": question.correct_answer.id
         })
 
     """
         API endpoint that returns a question based on request
     """
+
     @action(detail=False, methods=['get'], url_path='question',
-        description='Returns 4 random cards for the quiz.')
+            description='Returns 4 random cards for the quiz.')
     def question(self, request, pk=None):
         cursor = connection.cursor()
 
@@ -333,12 +350,12 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
 
         # Create new QuizQuestion object
         question = QuizQuestion.objects.create(
-            question = self.retrieve_question_string_from_type(answer_type),
-            user = User.objects.get(email=request.user['email']),
-            question_type = question_type,
-            answer_type = answer_type
+            question=self.retrieve_question_string_from_type(answer_type),
+            user=User.objects.get(email=request.user['email']),
+            question_type=question_type,
+            answer_type=answer_type
         )
-        
+
         # Set the cards for the answers
         for i in range(len(cards)):
             answer = QuizAnswer.objects.create(
@@ -346,14 +363,14 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
             )
             question.answers.add(answer)
 
-            if(i == answer_ID):
+            if (i == answer_ID):
                 question.correct_answer = answer
                 question.image_url = cards[i]["image_url"]
-        
+
         question.save()
-        
+
         return Response(status=status.HTTP_200_OK, data=question.to_json())
-    
+
     @staticmethod
     def dict_fetchall(cursor):
         """Return all rows from a cursor as a dict"""
@@ -362,7 +379,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
             dict(zip(columns, row))
             for row in cursor.fetchall()
         ]
-    
+
     def retrieve_question_string_from_type(self, answer_type):
         match answer_type:
             case QuizQuestion.QuizAnswerType.NAME:
@@ -371,7 +388,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
                 return "Seit wann bin ich dabei?"
             case _:
                 return "ERROR: Unknown question type."
-            
+
     def retrieve_answer_string_from_type(self, answer_type, answer):
         match answer_type:
             case QuizQuestion.QuizAnswerType.NAME:
