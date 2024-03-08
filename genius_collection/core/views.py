@@ -1,3 +1,4 @@
+import azure.core.exceptions
 from django.utils import timezone
 from rest_framework import status, viewsets, mixins
 from rest_framework.response import Response
@@ -13,6 +14,7 @@ from genius_collection.core.blob_sas import get_blob_sas_url
 from azure.storage.blob import BlobServiceClient
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
+
 
 class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """
@@ -49,6 +51,7 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
                                   'last_login': None,
                                   "card_id": None,
                                   'self_card_assigned': self_card_assigned})
+
 
 class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     # class CardViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -165,6 +168,7 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
 
         return Response(CardSerializer(user_card, context={'request': request}).data)
 
+
 class OverviewViewSet(APIView):
     """
     API endpoint that gives a score and ranking overview for the current user.
@@ -182,7 +186,8 @@ class OverviewViewSet(APIView):
             'userEmail': u.email,
             'last_received_unique': u.last_received_unique
         } for u in User.objects.all()]
-        rankings.sort(key=lambda r: (-r['uniqueCardsCount'], r['last_received_unique'] is None, r['last_received_unique'], r['userEmail']))
+        rankings.sort(key=lambda r: (
+        -r['uniqueCardsCount'], r['last_received_unique'] is None, r['last_received_unique'], r['userEmail']))
         for i in range(len(rankings)):
             rankings[i]['rank'] = i + 1
 
@@ -231,6 +236,7 @@ class DistributeViewSet(APIView):
         return Response(
             {'status': f'{len(receiver_users)} * {qty} = {len(receiver_users) * qty} Karten erfolgreich verteilt.'})
 
+
 class PictureViewSet(APIView):
     """
     API endpoint that uploads a picture for the current user.
@@ -243,7 +249,8 @@ class PictureViewSet(APIView):
         image_url = get_blob_sas_url('card-originals', email)
         return Response(image_url)
 
-    @action(methods=['post'], detail=False, description='Uploads a picture for the current user to the Azure Blob Container.')
+    @action(methods=['post'], detail=False,
+            description='Uploads a picture for the current user to the Azure Blob Container.')
     def post(self, request):
         file = request.FILES['file']
         if file.content_type != 'image/jpeg':
@@ -256,7 +263,8 @@ class PictureViewSet(APIView):
         credential = DefaultAzureCredential()
 
         # Connect to Azure Blob Storage
-        blob_service_client = BlobServiceClient(account_url="https://gcollection.blob.core.windows.net", credential=credential)
+        blob_service_client = BlobServiceClient(account_url="https://gcollection.blob.core.windows.net",
+                                                credential=credential)
         container_client = blob_service_client.get_container_client("card-originals")
 
         # Upload file to Azure Blob Storage
@@ -269,6 +277,7 @@ class PictureViewSet(APIView):
 
         return Response(image_url)
 
+
 class QuizQuestionViewSet(viewsets.GenericViewSet):
     """
     API endpoint that allows quiz questions to be viewed and answered
@@ -278,6 +287,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
     """
     API endpoint that checks if the answer is correct.
     """
+
     @action(detail=False, methods=['post'], url_path='answer',
             description='Checks if the answer is correct.')
     def answer(self, request, pk=None):
@@ -286,7 +296,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
 
         answer_is_correct = (answer == question.correct_answer)
 
-        if(question.given_answer is not None):
+        if (question.given_answer is not None):
             return Response(status=status.HTTP_400_BAD_REQUEST, data={
                 'status': 'Du hast diese Frage bereits beantwortet.'
             })
@@ -305,8 +315,9 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
     """
         API endpoint that returns a question based on request
     """
+
     @action(detail=False, methods=['get'], url_path='question',
-        description='Returns 4 random cards for the quiz.')
+            description='Returns 4 random cards for the quiz.')
     def question(self, request, pk=None):
         cursor = connection.cursor()
 
@@ -330,10 +341,10 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
 
         # Create new QuizQuestion object
         question = QuizQuestion.objects.create(
-            question = self.retrieve_question_string_from_type(answer_type),
-            user = User.objects.get(email=request.user['email']),
-            question_type = question_type,
-            answer_type = answer_type
+            question=self.retrieve_question_string_from_type(answer_type),
+            user=User.objects.get(email=request.user['email']),
+            question_type=question_type,
+            answer_type=answer_type
         )
 
         # Set the cards for the answers
@@ -343,7 +354,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
             )
             question.answers.add(answer)
 
-            if(i == answer_ID):
+            if (i == answer_ID):
                 question.correct_answer = answer
                 question.image_url = cards[i]["image_url"]
 
@@ -409,5 +420,19 @@ class DeleteUserAndCard(APIView):
         except ObjectDoesNotExist:
             card_answer = 'Card Objekt wurde nicht gelöscht, da es in der Datenbank nicht gefunden wurde.'
 
+        try:
+            # Authenticate with managed identity
+            credential = DefaultAzureCredential()
+            # Connect to Azure Blob Storage
+            blob_service_client = BlobServiceClient(account_url="https://gcollection.blob.core.windows.net",
+                                                    credential=credential)
+            container_client = blob_service_client.get_container_client("card-originals")
+            # Upload file to Azure Blob Storage
+            email = request.user['email']
+            container_client.delete_blob(f'{email}.jpg')
+            image_answer = 'Card Image wurde im Storage Container gefunden und gelöscht.'
+        except azure.core.exceptions.ResourceNotFoundError:
+            image_answer = 'Card Image wurde nicht gelöscht, da es im Storage Container nicht gefunden wurde.'
+
         return Response(
-            {'status': f'User-Email: [{user_to_delete_email}]. {user_answer} {card_answer}'})
+            {'status': f'User-Email: [{user_to_delete_email}]. {user_answer} {card_answer} {image_answer}'})
