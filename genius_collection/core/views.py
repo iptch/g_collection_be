@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from genius_collection.core.serializers import UserSerializer, CardSerializer
-from django.db.models import Sum
+from django.db.models import Sum, Q, Count
 from django.db import connection, IntegrityError
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core import serializers
@@ -17,6 +17,7 @@ from genius_collection.core.blob_sas import get_blob_sas_url
 from azure.storage.blob import BlobServiceClient
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
+import random
 import pandas as pd
 import json
 
@@ -330,81 +331,85 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
     """
 
     @action(detail=False, methods=['post'], url_path='question',
-            description='Returns 4 random cards for the quiz.')
+            description='Returns n random cards for the quiz with the defined question and answer type.')
     def question(self, request, pk=None):
-        # TODO filter that only people are selected, which filled out answers for the question/answers
-        # flow:
-        # 1. filter/where clause to check that answer and question type are both not null
-        # 2. make a groupby on the answer-column to get distinct values (preventing multiple times e.g. "Senior Consultant" as answer)
-        # 3. select a subset of n cards
-        answer_possibility_count = int(request.data.get('answer_possibilities', '4'))
-        question_type = request.data.get('question_type', 'IMAGE')
-        answer_type = request.data.get('answer_type', 'NAME')
-
-        cursor = connection.cursor()
-        query = f"""
-            SELECT email
-            FROM core_card cc
-            WHERE  1=1 
-            AND %s IS NOT NULL
-            AND %s IS NULL
-            ORDER BY RANDOM()
-            LIMIT 4;
         """
+        Get a set of possible cards that can answer the question. Then select one as the correct card.
+        """
+        answer_possibilities = int(request.data.get('answer_possibilities', 4))
+        question_type = request.data.get('question_type', 'image')
+        answer_type = request.data.get('answer_type', 'name')
 
-        cursor.execute(query, [str.lower(question_type), str.lower(answer_type)])
-        usable_card_emails = [i[0] for i in cursor.fetchall()]
-        # usable_cards = Card.objects
-        # if Quiz.QuizType.WISH_DESTINATION in [question_type, answer_type]:
-        #     usable_cards = usable_cards.exclude(wish_destination='')
-        # if Quiz.QuizType.WISH_PERSON in [question_type, answer_type]:
-        #     usable_cards = usable_cards.exclude(wish_person__isnull='')
-        # if Quiz.QuizType.WISH_SKILL in [question_type, answer_type]:
-        #     usable_cards = usable_cards.exclude(wish_skill='')
-        # if Quiz.QuizType.BEST_ADVICE in [question_type, answer_type]:
-        #     usable_cards = usable_cards.exclude(best_advice='')
-        #
-        # answer_possibility_cards = usable_cards.order_by('?')[0:answer_possibility_count]
-        answer_possibility_cards = Card.objects.filter(email__in=usable_card_emails)
-        # answer_possibility_cards = Card.objects.filter(answer_card__id__in=usable_card_ids).order_by('?')[0:answer_possibility_count]
-        answer_possibility_cards = Card.objects
+        possible_cards = self.get_possible_cards(question_type, answer_type)
 
-        answer_id = random.randrange(len([answer_possibility_cards]))
-        question_true_card = answer_possibility_cards[answer_id]
-        if question_type == Quiz.QuizType.IMAGE:
-            input_value = None
-            image_url = get_blob_sas_url('card-thumbnails', question_true_card.email)
+        # take n cards and choose one to be the correct answer
+        random.shuffle(possible_cards)
+        answer_possible_cards = possible_cards[:answer_possibilities]
+        correct_card = random.choice(answer_possible_cards)
+
+        if question_type == 'image':
+            question_value = get_blob_sas_url('card-originals', correct_card.email)
         else:
-            image_url = None
-            input_value = getattr(question_true_card, str.lower(question_type))
-
-        if answer_type == Quiz.QuizType.IMAGE:
-            answer_possibilities = [{'card_id': c.id, 'answer_value': c.name} for c in
-                                    list(answer_possibility_cards)]
+            question_value = getattr(correct_card, question_type)
+        if answer_type == 'image':
+            answer_possible_values = [get_blob_sas_url('card-originals', c.email) for c in answer_possible_cards]
         else:
-            answer_possibilities = [{'card_id': c.id, 'answer_value': getattr(c, str.lower(answer_type))} for c in
-                                    list(answer_possibility_cards)]
+            answer_possible_values = [getattr(c, answer_type) for c in answer_possible_cards]
+
         quiz = Quiz.objects.create(
             user=User.objects.get(email=request.user['email']),
             question_type=question_type,
             answer_type=answer_type,
-            question_true_card=question_true_card
+            question_true_card=correct_card
         )
         quiz.save()
         try:
             question_answer_tuple = {
                 'question_type': question_type,
-                'image_url': image_url,
                 'answer_type': answer_type,
+                'question_value': question_value,
+                'answer_possible_values': answer_possible_values,
                 'answer_possibilities': answer_possibilities,
-                'question_string': self.get_question_string(question_type, answer_type, input_value)
+                'question_string': self.get_question_string(question_type, answer_type, question_value)
             }
             return Response(status=status.HTTP_201_CREATED, data=question_answer_tuple)
         except KeyError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST, data=str(e))
 
     @staticmethod
+    def get_possible_cards(question_type, answer_type):
+        """
+        Get a set of cards that can answer the question (no null values) and don't contain duplicate answers
+        """
+        if question_type == 'image':
+            question_type = 'email'
+        if answer_type == 'image':
+            answer_type = 'email'
+        filter_query = Q(**{f"{question_type}__isnull": False, f"{answer_type}__isnull": False})
+
+        # Query cards where the question/answer is not null
+        # and group by answers, to prevent twice e.g. "Senior Consultant" as answer possibility.
+        grouped_cards = Card.objects.filter(filter_query).values(answer_type).annotate(count=Count('name'))
+
+        selected_cards = {}
+        for group in grouped_cards:
+            group_cards = Card.objects.filter(**{answer_type: group[answer_type]})
+
+            # If there's more than one card in the group, randomly select one
+            if group['count'] > 1:
+                random_card = random.choice(group_cards)
+                selected_cards[group[answer_type]] = random_card
+            else:
+                selected_cards[group[answer_type]] = group_cards.first()
+        return list(selected_cards.values())
+
+    @staticmethod
     def get_question_string(question_type, answer_type, input_value):
+        """
+        Translate the question/answer combination in a natural language question.
+        """
+        question_type = str.upper(question_type)
+        answer_type = str.upper(answer_type)
         mapping = {
             Quiz.QuizType.IMAGE: {
                 Quiz.QuizType.NAME: 'Wen siehst du auf diesem Bild?',
