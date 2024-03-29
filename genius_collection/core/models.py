@@ -42,6 +42,7 @@ class User(models.Model):
     is_admin = models.BooleanField(default=False)
     last_login = models.DateTimeField(auto_now=True)
     last_received_unique = models.DateTimeField(null=True)
+    quiz_score = models.IntegerField(default=0)
     objects = UserManager()
 
 
@@ -154,8 +155,9 @@ class Quiz(models.Model):
     question_type = models.CharField(max_length=16, choices=QuizType.choices, default=QuizType.IMAGE)
     answer_type = models.CharField(max_length=16, choices=QuizType.choices, default=QuizType.NAME)
     question_true_card = models.ForeignKey(Card, on_delete=models.RESTRICT, related_name='true_card')
-    question_answer_card = models.ForeignKey(Card, on_delete=models.RESTRICT, related_name='answer_card', null=True)
     answer_timestamp = models.DateTimeField(null=True)
+    answer_options = models.IntegerField(null=True)
+    answer_correct = models.BooleanField(null=True)
 
     # def to_json(self):
     #     data = {

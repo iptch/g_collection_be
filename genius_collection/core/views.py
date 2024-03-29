@@ -1,4 +1,3 @@
-import random
 from django.utils import timezone
 from rest_framework import status, viewsets, mixins
 from rest_framework.response import Response
@@ -8,18 +7,12 @@ from genius_collection.core.serializers import UserSerializer, CardSerializer
 from django.db.models import Sum, Q, Count
 from django.db import connection, IntegrityError
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.core import serializers
-from django.forms.models import model_to_dict
-from .models import Card, User, Ownership, Distribution
 from .models import Card, Quiz, User, Ownership, Distribution
 from .jwt_validation import JWTAccessTokenAuthentication
 from genius_collection.core.blob_sas import get_blob_sas_url
-from azure.storage.blob import BlobServiceClient
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 import random
-import pandas as pd
-import json
 
 
 class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -44,7 +37,7 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
             return Response(
                 data={'status': f'User in Datenbank gefunden.',
                       'user': self.get_serializer(current_user).data,
-                      "card_id": user_card.get().pk if user_card.exists() else None,
+                      'card_id': user_card.get().pk if user_card.exists() else None,
                       'last_login': last_login})
         except User.DoesNotExist:
             user, self_card_assigned = User.objects.create_user(first_name=request.user['first_name'],
@@ -55,7 +48,7 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
                             data={'status': 'User erfolgreich erstellt.',
                                   'user': self.get_serializer(user).data,
                                   'last_login': None,
-                                  "card_id": None,
+                                  'card_id': None,
                                   'self_card_assigned': self_card_assigned})
 
 
@@ -194,16 +187,21 @@ class OverviewViewSet(APIView):
         user_cards = User.objects.get(email=request.user['email']).cards.all()
         total_quantity = Ownership.objects.aggregate(total_quantity=Sum('quantity'))['total_quantity']
 
-        rankings = [{
+        scores = [{
             'uniqueCardsCount': u.cards.count(),
             'displayName': str(u),
             'userEmail': u.email,
-            'last_received_unique': u.last_received_unique
+            'last_received_unique': u.last_received_unique,
+            'quizScore': u.quiz_score
         } for u in User.objects.all()]
-        rankings.sort(key=lambda r: (
+        ranking_cards = sorted(scores, key=lambda r: (
             -r['uniqueCardsCount'], r['last_received_unique'] is None, r['last_received_unique'], r['userEmail']))
-        for i in range(len(rankings)):
-            rankings[i]['rank'] = i + 1
+        ranking_quiz = sorted(scores, key=lambda r: (r['quizScore'], r['userEmail']))
+
+        for i in range(len(ranking_cards)):
+            ranking_cards[i]['rank'] = i + 1
+        for i in range(len(ranking_quiz)):
+            ranking_quiz[i]['rank'] = i + 1
 
         try:
             last_dist = Distribution.objects.latest('timestamp').timestamp
@@ -216,7 +214,8 @@ class OverviewViewSet(APIView):
             'myUniqueCardsCount': user_cards.distinct().count(),
             'allCardsCount': Card.objects.all().count(),
             'duplicateCardsCount': user_cards.count() - user_cards.distinct().count(),
-            'rankingList': rankings,
+            'rankingCards': ranking_cards,
+            'rankingQuiz': ranking_quiz,
             'lastDistribution': last_dist
         })
 
@@ -294,41 +293,56 @@ class PictureViewSet(APIView):
 
 class QuizQuestionViewSet(viewsets.GenericViewSet):
     """
-    API endpoint that allows quiz questions to be viewed and answered
+    API endpoints that allows quiz questions to be viewed and answered
     """
     authentication_classes = [JWTAccessTokenAuthentication]
 
-    """
-    API endpoint that checks if the answer is correct.
-    """
+    @action(detail=False, methods=['post'], url_path='answer',
+            description='Checks if the answer is correct.')
+    def answer(self, request, pk=None):
+        current_user = User.objects.get(email=request.user['email'])
+        question = Quiz.objects.get(id=request.data['question_id'])
+        given_answer = request.data['answer']
+        correct_answer = getattr(question.question_true_card, question.answer_type)
 
-    # @action(detail=False, methods=['post'], url_path='answer',
-    #         description='Checks if the answer is correct.')
-    # def answer(self, request, pk=None):
-    #     question = QuizQuestion.objects.get(id=request.data['question'])
-    #     answer = QuizAnswer.objects.get(id=request.data['answer'])
-    #
-    #     answer_is_correct = (answer == question.correct_answer)
-    #
-    #     if (question.given_answer is not None):
-    #         return Response(status=status.HTTP_400_BAD_REQUEST, data={
-    #             'status': 'Du hast diese Frage bereits beantwortet.'
-    #         })
-    #
-    #     question.given_answer = answer
-    #     question.answer_timestamp = timezone.now()
-    #     question.save()
-    #
-    #     # TODO Update score of the user
-    #
-    #     return Response(status=status.HTTP_200_OK, data={
-    #         'isCorrect': answer_is_correct,
-    #         "correctAnswer": question.correct_answer.id
-    #     })
+        answer_is_correct = (given_answer == correct_answer)
 
-    """
-    API endpoint that returns a question based on request
-    """
+        if question.answer_correct is not None:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={
+                'status': 'Du hast diese Frage bereits beantwortet.'
+            })
+
+        question.answer_correct = answer_is_correct
+        question.answer_timestamp = timezone.now()
+        question.save()
+
+        score_change, new_score = self.update_player_score(answer_is_correct, current_user, question.question_type,
+                                                           question.answer_type, question.answer_options)
+
+        return Response(status=status.HTTP_200_OK, data={
+            'is_correct': answer_is_correct,
+            'given_answer': given_answer,
+            'correct_answer': correct_answer,
+            'score_change': score_change,
+            'new_score': new_score
+        })
+
+    @staticmethod
+    def update_player_score(answer_is_correct, user, question_type, answer_type, answer_options):
+        """
+        Depending on the question/answer tuple and the number of points award points to the user.
+        """
+        question_type = str.upper(question_type)
+        answer_type = str.upper(answer_type)
+        question_value = QuizQuestionViewSet.get_question_mapping(question_type, answer_type)
+        if answer_is_correct:
+            score_change = question_value
+        else:
+            # The expected value for "guessing" should be 0, so there is a penalty for wrong answers
+            score_change = -round(question_value / (answer_options - 1))
+        user.quiz_score += score_change
+        user.save()
+        return score_change, user.quiz_score
 
     @action(detail=False, methods=['post'], url_path='question',
             description='Returns n random cards for the quiz with the defined question and answer type.')
@@ -336,7 +350,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         """
         Get a set of possible cards that can answer the question. Then select one as the correct card.
         """
-        answer_possibilities = int(request.data.get('answer_possibilities', 4))
+        answer_options = int(request.data.get('answer_options', 4))
         question_type = request.data.get('question_type', 'image')
         answer_type = request.data.get('answer_type', 'name')
 
@@ -344,7 +358,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
 
         # take n cards and choose one to be the correct answer
         random.shuffle(possible_cards)
-        answer_possible_cards = possible_cards[:answer_possibilities]
+        answer_possible_cards = possible_cards[:answer_options]
         correct_card = random.choice(answer_possible_cards)
 
         if question_type == 'image':
@@ -360,16 +374,19 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
             user=User.objects.get(email=request.user['email']),
             question_type=question_type,
             answer_type=answer_type,
-            question_true_card=correct_card
+            question_true_card=correct_card,
+            answer_options=answer_options
         )
+
         quiz.save()
         try:
             question_answer_tuple = {
+                'question_id': quiz.id,
                 'question_type': question_type,
                 'answer_type': answer_type,
                 'question_value': question_value,
                 'answer_possible_values': answer_possible_values,
-                'answer_possibilities': answer_possibilities,
+                'answer_options': answer_options,
                 'question_string': self.get_question_string(question_type, answer_type, question_value)
             }
             return Response(status=status.HTTP_201_CREATED, data=question_answer_tuple)
@@ -410,44 +427,61 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         """
         question_type = str.upper(question_type)
         answer_type = str.upper(answer_type)
+        return QuizQuestionViewSet.get_question_mapping(question_type, answer_type, input_value)
+
+    @staticmethod
+    def get_question_mapping(question_type, answer_type, input_value=None):
+        """
+        Translate the question/answer combination in a natural language question and add score for answering correctly.
+        https://docs.google.com/spreadsheets/d/1Xz3F_j-i1EhDGd5rSZ7dX4Ta9jcK07BufsIxtwqZevA/edit#gid=0
+        """
         mapping = {
             Quiz.QuizType.IMAGE: {
-                Quiz.QuizType.NAME: 'Wen siehst du auf diesem Bild?',
-                Quiz.QuizType.JOB: 'Welche Position hat die Person im Bild?',
-                Quiz.QuizType.ACRONYM: 'Was ist das Kürzel dieser Person?',
-                Quiz.QuizType.START_AT_IPT: 'Wann hat diese Person in der ipt angefangen?',
-                Quiz.QuizType.WISH_DESTINATION: 'Wo wollte diese Person schon immer mal hin?',
-                Quiz.QuizType.WISH_PERSON: 'Mit wem wollte diese Person schon immer mal tauschen?',
-                Quiz.QuizType.WISH_SKILL: 'Was wollte diese Person schon immer einmal lernen?',
-                Quiz.QuizType.BEST_ADVICE: 'Was ist der beste berufliche Ratschlag von dieser Person?'
+                Quiz.QuizType.NAME: ('Wen siehst du auf diesem Bild?', 10),
+                Quiz.QuizType.JOB: ('Welche Position hat die Person im Bild?', 25),
+                Quiz.QuizType.ACRONYM: ('Was ist das Kürzel dieser Person?', 15),
+                Quiz.QuizType.START_AT_IPT: ('Wann hat diese Person in der ipt angefangen?', 30),
+                Quiz.QuizType.WISH_DESTINATION: ('Wo wollte diese Person schon immer mal hin?', 60),
+                Quiz.QuizType.WISH_PERSON: ('Mit wem wollte diese Person schon immer mal tauschen?', 60),
+                Quiz.QuizType.WISH_SKILL: ('Was wollte diese Person schon immer einmal lernen?', 60),
+                Quiz.QuizType.BEST_ADVICE: ('Was ist der beste berufliche Ratschlag von dieser Person?', 60)
             },
             Quiz.QuizType.NAME: {
-                Quiz.QuizType.IMAGE: f'Welches Bild zeigt {input_value}?',
-                Quiz.QuizType.JOB: f'Welche Position hat {input_value} inne?',
-                Quiz.QuizType.START_AT_IPT: f'Wann hat {input_value} in der ipt angefangen?',
-                Quiz.QuizType.WISH_DESTINATION: f'Wo wollte {input_value} schon immer mal hin?',
-                Quiz.QuizType.WISH_PERSON: f'Mit wem wollte {input_value} schon immer mal tauschen?',
-                Quiz.QuizType.WISH_SKILL: f'Was wollte {input_value} schon immer einmal lernen?',
-                Quiz.QuizType.BEST_ADVICE: f'Was ist der beste berufliche Ratschlag von {input_value}?'
+                Quiz.QuizType.IMAGE: (f'Welches Bild zeigt {input_value}?', 10),
+                Quiz.QuizType.JOB: (f'Welche Position hat {input_value} inne?', 25),
+                Quiz.QuizType.START_AT_IPT: (f'Wann hat {input_value} in der ipt angefangen?', 30),
+                Quiz.QuizType.WISH_DESTINATION: (f'Wo wollte {input_value} schon immer mal hin?', 60),
+                Quiz.QuizType.WISH_PERSON: (f'Mit wem wollte {input_value} schon immer mal tauschen?', 60),
+                Quiz.QuizType.WISH_SKILL: (f'Was wollte {input_value} schon immer einmal lernen?', 60),
+                Quiz.QuizType.BEST_ADVICE: (f'Was ist der beste berufliche Ratschlag von {input_value}?', 60)
+            },
+            Quiz.QuizType.START_AT_IPT: {
+                Quiz.QuizType.NAME: (f'Wer hatte seinen Start bei der ipt am {input_value}?', 30)
             },
             Quiz.QuizType.WISH_DESTINATION: {
-                Quiz.QuizType.NAME: f'Da würde ich am liebsten hinreisen: "{input_value}". Wer hat das gesagt?'
+                Quiz.QuizType.NAME: (f'Da würde ich am liebsten hinreisen: "{input_value}". Wer hat das gesagt?', 60)
             },
             Quiz.QuizType.WISH_PERSON: {
-                Quiz.QuizType.NAME: f'Am liebsten tauschen würde ich mit: "{input_value}". Wer hat das gesagt?'
+                Quiz.QuizType.NAME: (f'Am liebsten tauschen würde ich mit: "{input_value}". Wer hat das gesagt?', 60)
             },
             Quiz.QuizType.WISH_SKILL: {
-                Quiz.QuizType.NAME: f'Das wollte ich schon immer mal erlernen: "{input_value}". Wer hat das gesagt?'
+                Quiz.QuizType.NAME: (
+                    f'Das wollte ich schon immer mal erlernen: "{input_value}". Wer hat das gesagt?', 60)
             },
             Quiz.QuizType.BEST_ADVICE: {
-                Quiz.QuizType.NAME: f'Der beste Ratschlag ist: "{input_value}". Wer hat das gesagt?'
+                Quiz.QuizType.NAME: (f'Der beste Ratschlag ist: "{input_value}". Wer hat das gesagt?', 60)
             }
         }
 
         try:
-            return mapping[question_type][answer_type]
+            result = mapping[question_type][answer_type]
         except KeyError:
-            raise KeyError(f'Combination of Question/Answer not allowed: ({question_type}/{answer_type})')
+            raise KeyError(f'Kombination von Frage/Antwort ist nicht erlaubt: ({question_type}/{answer_type})')
+
+        if input_value:
+            return result[0]
+        else:
+            return result[1]
 
 
 class DeleteUserAndCard(APIView):
