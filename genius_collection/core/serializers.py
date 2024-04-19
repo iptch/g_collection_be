@@ -12,7 +12,7 @@ from django.db.models import QuerySet
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'is_admin']
+        fields = ['email', 'first_name', 'last_name', 'is_admin', 'quiz_score']
 
 
 class CardSerializer(serializers.HyperlinkedModelSerializer):
