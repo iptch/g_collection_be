@@ -46,6 +46,14 @@ def create_container_sas(
 ) -> str:
     start_time = datetime.datetime.now(datetime.timezone.utc)
     cached_sas = cache.get(container_name)
+
+    # Debugging
+    print(f"Entered function 'create_container_sas' for container_name '{container_name}' with start_time '{start_time}' (UTC)")
+    if cached_sas:
+        print(f"Cached key exists that expires on: {cached_sas['expiry']}")
+    else:
+        print("No key cached")
+
     if cached_sas and cached_sas["expiry"] > start_time + CACHE_BUFFER_TIME:
         return cached_sas["value"]
 

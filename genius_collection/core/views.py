@@ -13,6 +13,7 @@ from genius_collection.core.blob_sas import get_blob_sas_url
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 import random
+from azure.core.exceptions import ResourceNotFoundError
 
 
 class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -37,7 +38,7 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
             return Response(
                 data={'status': f'User in Datenbank gefunden.',
                       'user': self.get_serializer(current_user).data,
-                      'card_id': user_card.get().pk if user_card.exists() else None,
+                      "card_id": user_card.get().pk if user_card.exists() else None,
                       'last_login': last_login})
         except User.DoesNotExist:
             user, self_card_assigned = User.objects.create_user(first_name=request.user['first_name'],
@@ -48,7 +49,7 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.Gen
                             data={'status': 'User erfolgreich erstellt.',
                                   'user': self.get_serializer(user).data,
                                   'last_login': None,
-                                  'card_id': None,
+                                  "card_id": None,
                                   'self_card_assigned': self_card_assigned})
 
 
@@ -142,6 +143,7 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         except Card.DoesNotExist:
             user_card = Card()
             is_initial_card_creation = True
+
 
         # Update the fields of the user_card object with the data provided in the request
         user_card.name = request.data.get('name', f'{request.user["first_name"]} {request.user["last_name"]}')
@@ -524,7 +526,7 @@ class DeleteUserAndCard(APIView):
             # Upload file to Azure Blob Storage
             container_client.delete_blob(f'{user_to_delete_email}.jpg')
             image_answer = 'Card Image wurde im Storage Container gefunden und gelöscht.'
-        except azure.core.exceptions.ResourceNotFoundError:
+        except ResourceNotFoundError:
             image_answer = 'Card Image wurde nicht gelöscht, da es im Storage Container nicht gefunden wurde.'
 
         return Response(
