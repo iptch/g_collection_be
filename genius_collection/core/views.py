@@ -144,7 +144,6 @@ class CardViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
             user_card = Card()
             is_initial_card_creation = True
 
-
         # Update the fields of the user_card object with the data provided in the request
         user_card.name = request.data.get('name', f'{request.user["first_name"]} {request.user["last_name"]}')
         user_card.acronym = request.data.get('acronym', user_card.acronym)
@@ -198,7 +197,7 @@ class OverviewViewSet(APIView):
         } for u in User.objects.all()]
         ranking_cards = sorted(scores, key=lambda r: (
             -r['uniqueCardsCount'], r['last_received_unique'] is None, r['last_received_unique'], r['userEmail']))
-        ranking_quiz = sorted(scores, key=lambda r: (r['quizScore'], r['userEmail']))
+        ranking_quiz = sorted(scores, key=lambda r: (-r['quizScore'], r['userEmail']))
 
         for i in range(len(ranking_cards)):
             ranking_cards[i]['rank'] = i + 1
@@ -365,10 +364,14 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
 
         if question_type == 'image':
             question_value = get_blob_sas_url('card-originals', correct_card.email)
+        elif question_type == 'start_at_ipt':
+            question_value = getattr(correct_card, question_type).strftime("%d.%m.%Y")
         else:
             question_value = getattr(correct_card, question_type)
         if answer_type == 'image':
             answer_possible_values = [get_blob_sas_url('card-originals', c.email) for c in answer_possible_cards]
+        elif answer_type == 'start_at_ipt':
+            answer_possible_values = [getattr(c, answer_type).strftime("%d.%m.%Y") for c in answer_possible_cards]
         else:
             answer_possible_values = [getattr(c, answer_type) for c in answer_possible_cards]
 
@@ -381,6 +384,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         )
 
         quiz.save()
+
         try:
             question_answer_tuple = {
                 'question_id': quiz.id,
