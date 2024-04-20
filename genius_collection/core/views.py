@@ -345,6 +345,36 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         user.save()
         return score_change, user.quiz_score
 
+    @staticmethod
+    def get_random_question_type(answer_type):
+        """
+        Depending on the answer_type, return a possible question_type
+        """
+        mapping = QuizQuestionViewSet.get_question_answer_mapping()
+        if answer_type == 'random':
+            possible_question_types = list(mapping.keys())
+        else:
+            possible_question_types = [question for question, answers in mapping.items() if
+                                       answer_type in [str(k).lower() for k in answers.keys()]]
+        question_type = random.choice(possible_question_types)
+        print(question_type)
+        return str(question_type).lower()
+
+    @staticmethod
+    def get_random_answer_type(question_type):
+        """
+        Depending on the question_type, return a possible answer_type
+        """
+        mapping = QuizQuestionViewSet.get_question_answer_mapping()
+        if question_type == 'random':
+            possible_answer_types = list(mapping.keys())
+        else:
+            possible_answer_types = list([answers for question, answers in mapping.items() if
+                                       question_type == str(question).lower()][0].keys())
+        answer_type = random.choice(possible_answer_types)
+        print(answer_type)
+        return str(answer_type).lower()
+
     @action(detail=False, methods=['post'], url_path='question',
             description='Returns n random cards for the quiz with the defined question and answer type.')
     def question(self, request, pk=None):
@@ -354,6 +384,10 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         answer_options = int(request.data.get('answer_options', 4))
         question_type = request.data.get('question_type', 'image')
         answer_type = request.data.get('answer_type', 'name')
+        if question_type == 'random':
+            question_type = self.get_random_question_type(answer_type)
+        if answer_type == 'random':
+            answer_type = self.get_random_answer_type(question_type)
 
         possible_cards = self.get_possible_cards(question_type, answer_type)
 
@@ -436,12 +470,8 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         return QuizQuestionViewSet.get_question_mapping(question_type, answer_type, input_value)
 
     @staticmethod
-    def get_question_mapping(question_type, answer_type, input_value=None):
-        """
-        Translate the question/answer combination in a natural language question and add score for answering correctly.
-        https://docs.google.com/spreadsheets/d/1Xz3F_j-i1EhDGd5rSZ7dX4Ta9jcK07BufsIxtwqZevA/edit#gid=0
-        """
-        mapping = {
+    def get_question_answer_mapping(input_value=None):
+        return {
             Quiz.QuizType.IMAGE: {
                 Quiz.QuizType.NAME: ('Wen siehst du auf diesem Bild?', 10),
                 Quiz.QuizType.JOB: ('Welche Position hat die Person im Bild?', 25),
@@ -478,6 +508,14 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
                 Quiz.QuizType.NAME: (f'Der beste Ratschlag ist: "{input_value}". Wer hat das gesagt?', 60)
             }
         }
+
+    @staticmethod
+    def get_question_mapping(question_type, answer_type, input_value=None):
+        """
+        Translate the question/answer combination in a natural language question and add score for answering correctly.
+        https://docs.google.com/spreadsheets/d/1Xz3F_j-i1EhDGd5rSZ7dX4Ta9jcK07BufsIxtwqZevA/edit#gid=0
+        """
+        mapping = QuizQuestionViewSet.get_question_answer_mapping(input_value)
 
         try:
             result = mapping[question_type][answer_type]
