@@ -304,7 +304,14 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         current_user = User.objects.get(email=request.user['email'])
         question = Quiz.objects.get(id=request.data['question_id'])
         given_answer = request.data['answer']
-        correct_answer = getattr(question.question_true_card, question.answer_type)
+
+        # Card object has no attribute 'image', since the image URL is not saved in the DB.
+        # As a workaround, the front-end sends the email instead to validate the answer.
+        answer_type = 'email' if question.answer_type == 'image' else question.answer_type
+
+        correct_answer = getattr(question.question_true_card, answer_type)
+        if question.answer_type == 'start_at_ipt':
+            correct_answer = correct_answer.strftime("%d.%m.%Y")
 
         answer_is_correct = (given_answer == correct_answer)
 
@@ -397,13 +404,13 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
         correct_card = random.choice(answer_possible_cards)
 
         if question_type == 'image':
-            question_value = get_blob_sas_url('card-originals', correct_card.email)
+            question_value = get_blob_sas_url('card-detail-views', correct_card.email)
         elif question_type == 'start_at_ipt':
             question_value = getattr(correct_card, question_type).strftime("%d.%m.%Y")
         else:
             question_value = getattr(correct_card, question_type)
         if answer_type == 'image':
-            answer_possible_values = [get_blob_sas_url('card-originals', c.email) for c in answer_possible_cards]
+            answer_possible_values = [get_blob_sas_url('card-thumbnails', c.email) for c in answer_possible_cards]
         elif answer_type == 'start_at_ipt':
             answer_possible_values = [getattr(c, answer_type).strftime("%d.%m.%Y") for c in answer_possible_cards]
         else:
