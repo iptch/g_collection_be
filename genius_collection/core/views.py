@@ -14,6 +14,7 @@ from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 import random
 from azure.core.exceptions import ResourceNotFoundError
+import copy
 
 
 class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -195,9 +196,9 @@ class OverviewViewSet(APIView):
             'last_received_unique': u.last_received_unique,
             'quizScore': u.quiz_score
         } for u in User.objects.all()]
-        ranking_cards = sorted(scores, key=lambda r: (
-            -r['uniqueCardsCount'], r['last_received_unique'] is None, r['last_received_unique'], r['userEmail']))
-        ranking_quiz = sorted(scores, key=lambda r: (-r['quizScore'], r['userEmail']))
+        ranking_cards = copy.deepcopy(sorted(scores, key=lambda r: (
+            -r['uniqueCardsCount'], r['last_received_unique'] is None, r['last_received_unique'], r['userEmail'])))
+        ranking_quiz = copy.deepcopy(sorted(scores, key=lambda r: (-r['quizScore'], r['userEmail'])))
 
         for i in range(len(ranking_cards)):
             ranking_cards[i]['rank'] = i + 1
@@ -377,7 +378,7 @@ class QuizQuestionViewSet(viewsets.GenericViewSet):
             possible_answer_types = list(mapping.keys())
         else:
             possible_answer_types = list([answers for question, answers in mapping.items() if
-                                       question_type == str(question).lower()][0].keys())
+                                          question_type == str(question).lower()][0].keys())
         answer_type = random.choice(possible_answer_types)
         print(answer_type)
         return str(answer_type).lower()
